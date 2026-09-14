@@ -798,11 +798,22 @@ apiRouter.post('/invoices', authenticateToken, (req: AuthenticatedRequest, res: 
     paymentStatus = 'Partially Paid';
   }
 
-  // 3. Generate unique invoice number
+  // 3. Invoice number handling: Use dynamic / custom if provided, otherwise auto-generate sequentially
+  let invoiceNumber = req.body.invoiceNumber ? String(req.body.invoiceNumber).trim() : '';
   const prefix = db.settings.invoicePrefix || 'SMA-2026';
   const nextNum = db.settings.nextInvoiceNumber || 1001;
-  const invoiceNumber = `${prefix}-${String(nextNum).padStart(4, '0')}`;
-  db.settings.nextInvoiceNumber = nextNum + 1;
+
+  if (!invoiceNumber) {
+    invoiceNumber = `${prefix}-${String(nextNum).padStart(4, '0')}`;
+    db.settings.nextInvoiceNumber = nextNum + 1;
+  } else {
+    // If user used the exact current sequential auto number, advance the counter
+    const currentSeq = `${prefix}-${String(nextNum).padStart(4, '0')}`;
+    const altSeq = `SMA${String(nextNum).padStart(6, '0')}`;
+    if (invoiceNumber === currentSeq || invoiceNumber === altSeq) {
+      db.settings.nextInvoiceNumber = nextNum + 1;
+    }
+  }
 
   const newInvoice: Invoice = {
     id: `inv-${Date.now()}`,
@@ -1197,6 +1208,114 @@ apiRouter.get('/ledger/business', authenticateToken, (req: Request, res: Respons
   });
 });
 
+// Manual Customer Ledger Voucher / Entry
+apiRouter.post('/ledger/customer/entry', authenticateToken, (req: AuthenticatedRequest, res: Response) => {
+  const db = readDb();
+  const { customerId, description, type, referenceNo, debit, credit, notes, date } = req.body;
+
+  if (!customerId) {
+    return res.status(400).json({ error: 'Customer ID is required.' });
+  }
+
+  const customer = db.customers.find((c) => c.id === customerId);
+  if (!customer) {
+    return res.status(404).json({ error: 'Customer not found.' });
+  }
+
+  const debitAmt = Math.max(0, Number(debit) || 0);
+  const creditAmt = Math.max(0, Number(credit) || 0);
+
+  if (debitAmt === 0 && creditAmt === 0) {
+    return res.status(400).json({ error: 'Either debit or credit amount must be greater than zero.' });
+  }
+
+  const prevBalance = customer.currentOutstanding || 0;
+  const newBalance = Math.max(0, prevBalance + debitAmt - creditAmt);
+  customer.currentOutstanding = newBalance;
+
+  const newEntry: CustomerLedgerEntry = {
+    id: `cld-${Date.now()}`,
+    customerId: customer.id,
+    customerName: customer.name,
+    date: date ? new Date(date).toISOString() : new Date().toISOString(),
+    description: description?.trim() || (debitAmt > 0 ? 'Debit Adjustment' : 'Credit / Payment Adjustment'),
+    type: type || (creditAmt > 0 ? 'payment' : 'adjustment'),
+    referenceNo: referenceNo?.trim() || `ADJ-${Date.now().toString().slice(-6)}`,
+    debit: debitAmt,
+    credit: creditAmt,
+    balance: newBalance,
+    notes: notes?.trim() || undefined,
+  };
+
+  db.customerLedgers.push(newEntry);
+
+  logAudit(
+    req.user?.id || 'staff',
+    req.user?.name || 'Staff',
+    'LEDGER_ENTRY_ADDED',
+    'Ledgers',
+    `Added ${debitAmt > 0 ? 'Debit ₹' + debitAmt : 'Credit ₹' + creditAmt} entry for ${customer.name} (Ref: ${newEntry.referenceNo})`,
+    newEntry.id
+  );
+
+  writeDb(db);
+  res.status(201).json({ entry: newEntry, customer });
+});
+
+// Manual Supplier Ledger Voucher / Entry
+apiRouter.post('/ledger/supplier/entry', authenticateToken, (req: AuthenticatedRequest, res: Response) => {
+  const db = readDb();
+  const { supplierId, description, type, referenceNo, debit, credit, notes, date } = req.body;
+
+  if (!supplierId) {
+    return res.status(400).json({ error: 'Supplier ID is required.' });
+  }
+
+  const supplier = db.suppliers.find((s) => s.id === supplierId);
+  if (!supplier) {
+    return res.status(404).json({ error: 'Supplier not found.' });
+  }
+
+  const debitAmt = Math.max(0, Number(debit) || 0);
+  const creditAmt = Math.max(0, Number(credit) || 0);
+
+  if (debitAmt === 0 && creditAmt === 0) {
+    return res.status(400).json({ error: 'Either debit or credit amount must be greater than zero.' });
+  }
+
+  const prevPayable = supplier.currentPayable || 0;
+  const newPayable = Math.max(0, prevPayable + creditAmt - debitAmt);
+  supplier.currentPayable = newPayable;
+
+  const newEntry: SupplierLedgerEntry = {
+    id: `sld-${Date.now()}`,
+    supplierId: supplier.id,
+    supplierName: supplier.name,
+    date: date ? new Date(date).toISOString() : new Date().toISOString(),
+    description: description?.trim() || (creditAmt > 0 ? 'Purchase / Credit Adjustment' : 'Payment / Debit Note'),
+    type: type || (debitAmt > 0 ? 'payment' : 'purchase'),
+    referenceNo: referenceNo?.trim() || `VOUCH-${Date.now().toString().slice(-6)}`,
+    debit: debitAmt,
+    credit: creditAmt,
+    balance: newPayable,
+    notes: notes?.trim() || undefined,
+  };
+
+  db.supplierLedgers.push(newEntry);
+
+  logAudit(
+    req.user?.id || 'staff',
+    req.user?.name || 'Staff',
+    'SUPPLIER_LEDGER_ENTRY_ADDED',
+    'Ledgers',
+    `Added ${debitAmt > 0 ? 'Payment ₹' + debitAmt : 'Payable ₹' + creditAmt} entry for supplier ${supplier.name} (Ref: ${newEntry.referenceNo})`,
+    newEntry.id
+  );
+
+  writeDb(db);
+  res.status(201).json({ entry: newEntry, supplier });
+});
+
 // -------------------------------------------------------------
 // 10. RETURNS MANAGEMENT (SALES RETURN & PURCHASE RETURN)
 // -------------------------------------------------------------
@@ -1313,9 +1432,57 @@ apiRouter.put('/settings', authenticateToken, requireAdmin, (req: AuthenticatedR
   res.json(db.settings);
 });
 
-apiRouter.get('/audit-logs', authenticateToken, requireAdmin, (req: Request, res: Response) => {
+apiRouter.get('/audit-logs', authenticateToken, (req: AuthenticatedRequest, res: Response) => {
   const db = readDb();
-  res.json(db.auditLogs);
+  const { module, action, userId, search, limit } = req.query;
+  let logs = [...db.auditLogs];
+
+  if (module && typeof module === 'string' && module !== 'All') {
+    logs = logs.filter((l) => l.module.toLowerCase() === module.toLowerCase());
+  }
+
+  if (action && typeof action === 'string' && action !== 'All') {
+    logs = logs.filter((l) => l.action.toLowerCase() === action.toLowerCase());
+  }
+
+  if (userId && typeof userId === 'string' && userId !== 'All') {
+    logs = logs.filter((l) => l.userId === userId || l.userName.toLowerCase() === userId.toLowerCase());
+  }
+
+  if (search && typeof search === 'string') {
+    const q = search.toLowerCase();
+    logs = logs.filter(
+      (l) =>
+        l.details.toLowerCase().includes(q) ||
+        l.userName.toLowerCase().includes(q) ||
+        l.action.toLowerCase().includes(q) ||
+        l.module.toLowerCase().includes(q) ||
+        (l.recordId && l.recordId.toLowerCase().includes(q))
+    );
+  }
+
+  logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+  if (limit && !isNaN(Number(limit))) {
+    logs = logs.slice(0, Number(limit));
+  }
+
+  res.json(logs);
+});
+
+apiRouter.post('/audit-logs/clear', authenticateToken, requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+  const db = readDb();
+  const count = db.auditLogs.length;
+  db.auditLogs = [];
+  logAudit(
+    req.user?.id || 'admin',
+    req.user?.name || 'Admin',
+    'AUDIT_LOGS_PURGED',
+    'System',
+    `Cleared ${count} audit log records`
+  );
+  writeDb(db);
+  res.json({ message: 'Audit logs cleared successfully.' });
 });
 
 apiRouter.post('/settings/reset', authenticateToken, requireAdmin, (req: AuthenticatedRequest, res: Response) => {

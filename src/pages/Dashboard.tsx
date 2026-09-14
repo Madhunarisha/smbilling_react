@@ -234,7 +234,11 @@ export function Dashboard({
         </div>
 
         {/* Total Outstanding Receivables (From Customers) */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs hover:border-red-400 transition-colors">
+        <div
+          onClick={() => onNavigate('ledgers')}
+          className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs hover:border-red-400 cursor-pointer transition-colors"
+          title="Click to view Customer Khata Ledgers"
+        >
           <div className="flex items-center justify-between text-slate-500 text-xs font-semibold uppercase tracking-wider mb-1">
             <span>Customer Dues</span>
             <div className="p-1.5 rounded-lg bg-red-50 text-red-600 font-bold">
@@ -244,11 +248,15 @@ export function Dashboard({
           <div className="text-lg sm:text-xl font-black font-mono text-red-600">
             {formatINR(stats?.totalOutstandingReceivable)}
           </div>
-          <p className="text-[11px] text-slate-500 mt-1">To collect from customers</p>
+          <p className="text-[11px] text-slate-500 mt-1">To collect from customers • View Khata →</p>
         </div>
 
         {/* Total Payables (To Suppliers) */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs hover:border-blue-400 transition-colors">
+        <div
+          onClick={() => onNavigate('ledgers')}
+          className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs hover:border-blue-400 cursor-pointer transition-colors"
+          title="Click to view Supplier Payables Ledgers"
+        >
           <div className="flex items-center justify-between text-slate-500 text-xs font-semibold uppercase tracking-wider mb-1">
             <span>Supplier Dues</span>
             <div className="p-1.5 rounded-lg bg-blue-50 text-blue-600 font-bold">
@@ -258,7 +266,7 @@ export function Dashboard({
           <div className="text-lg sm:text-xl font-black font-mono text-blue-700">
             {formatINR(stats?.totalPayableToSuppliers)}
           </div>
-          <p className="text-[11px] text-slate-500 mt-1">Pending vendor bills</p>
+          <p className="text-[11px] text-slate-500 mt-1">Pending vendor bills • View Ledger →</p>
         </div>
 
         {/* Total Stock Valuation */}

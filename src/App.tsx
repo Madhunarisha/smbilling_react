@@ -17,6 +17,7 @@ import { StockManagement } from './pages/StockManagement.js';
 import { CustomersList } from './pages/CustomersList.js';
 import { SuppliersList } from './pages/SuppliersList.js';
 import { LedgersPage } from './pages/LedgersPage.js';
+import { AuditLogsPage } from './pages/AuditLogsPage.js';
 import { ReturnsPage } from './pages/ReturnsPage.js';
 import { ReportsPage } from './pages/ReportsPage.js';
 import { SettingsPage } from './pages/SettingsPage.js';
@@ -26,7 +27,7 @@ import { ExpensesPayments } from './pages/ExpensesPayments.js';
 import { QuotationsChallans } from './pages/QuotationsChallans.js';
 import { UserManagement } from './pages/UserManagement.js';
 
-import { Invoice, Product } from './types/index.js';
+import { Invoice, Product, BusinessSettings } from './types/index.js';
 import { api } from './services/api.js';
 
 function MainApp() {
@@ -40,6 +41,7 @@ function MainApp() {
   // Global Modals
   const [printInvoice, setPrintInvoice] = useState<Invoice | null>(null);
   const [whatsAppInvoice, setWhatsAppInvoice] = useState<Invoice | null>(null);
+  const [businessSettings, setBusinessSettings] = useState<BusinessSettings | null>(null);
 
   // Stock Adjustment modal triggered globally
   const [isStockModalOpen, setIsStockModalOpen] = useState(false);
@@ -50,11 +52,15 @@ function MainApp() {
   const [targetCustomerId, setTargetCustomerId] = useState<string | null>(null);
   const [targetSupplierId, setTargetSupplierId] = useState<string | null>(null);
 
-  // Load products list for global stock modal
-  const loadAllProducts = async () => {
+  // Load products and settings
+  const loadInitialData = async () => {
     try {
-      const prods = await api.getProducts();
+      const [prods, biz] = await Promise.all([
+        api.getProducts(),
+        api.getSettings().catch(() => null),
+      ]);
       setAllProducts(prods);
+      if (biz) setBusinessSettings(biz);
     } catch (e) {
       // ignore
     }
@@ -62,7 +68,7 @@ function MainApp() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      loadAllProducts();
+      loadInitialData();
     }
   }, [isAuthenticated]);
 
@@ -212,7 +218,10 @@ function MainApp() {
           {currentView === 'reports' && <ReportsPage />}
 
           {/* Settings -> Settings */}
-          {(currentView === 'settings' || currentView === 'audit') && <SettingsPage />}
+          {currentView === 'settings' && <SettingsPage />}
+
+          {/* Audit Logs */}
+          {currentView === 'audit' && <AuditLogsPage />}
 
           {/* User Management -> Manage Users */}
           {currentView === 'manage_users' && <UserManagement initialTab="users" />}
@@ -236,6 +245,7 @@ function MainApp() {
         isOpen={Boolean(printInvoice)}
         onClose={() => setPrintInvoice(null)}
         invoice={printInvoice}
+        settings={businessSettings || undefined}
       />
 
       {/* WhatsApp Sharing Dialog */}
@@ -257,7 +267,7 @@ function MainApp() {
         onSave={async (data) => {
           await api.adjustStock(data);
           showToast('Stock inventory updated successfully!', 'success');
-          loadAllProducts();
+          loadInitialData();
         }}
       />
     </div>

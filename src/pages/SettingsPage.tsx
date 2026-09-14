@@ -25,26 +25,33 @@ export function SettingsPage() {
 
   // Business Profile Form
   const [profile, setProfile] = useState<BusinessSettings>({
-    businessName: 'SM Autos & Batteries',
+    businessName: 'SM AUTOS AND BATTERY',
+    tradeName: 'SM AUTOS AND BATTERY',
+    legalName: 'HARIHARAN SHANMUGASUNDARAM',
+    constitution: 'Proprietorship',
     tagline: 'Automobile Spare Parts & Battery Specialists',
-    address: 'Shop No. 4 & 5, Main Auto Market, GT Road',
-    city: 'Delhi',
-    state: 'Delhi',
-    stateCode: '07',
-    pincode: '110006',
-    phone: '9876543210',
-    alternatePhone: '9876543211',
-    email: 'contact@smautos.com',
-    gstin: '07AAAAA0000A1Z5',
-    pan: 'AAAAA0000A',
-    invoicePrefix: 'SMA-2026-',
+    address: 'NO 5/1, WARD NO 10, ST-3, MELAPUDU THERU, Timmarasanayakkanur',
+    buildingNo: 'NO 5/1, WARD NO 10',
+    roadStreet: 'ST-3, MELAPUDU THERU',
+    locality: 'Timmarasanayakkanur',
+    city: 'Aundipatti',
+    district: 'Theni',
+    state: 'Tamil Nadu',
+    stateCode: '33',
+    pincode: '625536',
+    phone: '+91 98765 43210',
+    alternatePhone: '+91 98111 22334',
+    email: 'billing@smautos.com',
+    gstin: '33ARQPH7005P1ZE',
+    pan: 'ARQPH7005P',
+    invoicePrefix: 'SMA',
     nextInvoiceNumber: 1001,
-    termsAndConditions: '1. Goods once sold will only be replaced as per manufacturer warranty policy.\n2. Battery warranty strictly valid with serial number card.\n3. Electrical items carry no testing warranty once installed.',
+    termsAndConditions: '1. Goods once sold will only be replaced as per manufacturer warranty policy.\n2. Battery warranty strictly valid with serial number card.\n3. Electrical items carry no testing warranty once installed.\n4. Subject to Theni jurisdiction only.',
     bankName: 'HDFC Bank Ltd',
     bankAccount: '50200012345678',
     ifscCode: 'HDFC0001234',
-    bankBranch: 'Kashmere Gate, Delhi',
-    upiId: 'smautos@okhdfcbank',
+    bankBranch: 'Aundipatti Branch, Theni',
+    upiId: 'smautos@hdfcbank',
     defaultGstRate: 18,
     maxDiscountPercent: 20,
   });
@@ -165,14 +172,46 @@ export function SettingsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Business Legal Name
+                  Trade Name (As per GST Certificate)
                 </label>
                 <input
                   type="text"
                   required
-                  value={profile.businessName}
-                  onChange={(e) => setProfile({ ...profile, businessName: e.target.value })}
+                  value={profile.tradeName || profile.businessName}
+                  onChange={(e) =>
+                    setProfile({
+                      ...profile,
+                      tradeName: e.target.value,
+                      businessName: e.target.value,
+                    })
+                  }
                   className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Legal Name / Proprietor Name
+                </label>
+                <input
+                  type="text"
+                  value={profile.legalName || ''}
+                  onChange={(e) => setProfile({ ...profile, legalName: e.target.value })}
+                  placeholder="e.g. HARIHARAN SHANMUGASUNDARAM"
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Constitution of Business
+                </label>
+                <input
+                  type="text"
+                  value={profile.constitution || ''}
+                  onChange={(e) => setProfile({ ...profile, constitution: e.target.value })}
+                  placeholder="e.g. Proprietorship"
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg font-medium"
                 />
               </div>
 
@@ -190,7 +229,7 @@ export function SettingsPage() {
 
               <div className="sm:col-span-2">
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Physical Store Address
+                  Principal Place of Business (Building / Road / Locality)
                 </label>
                 <input
                   type="text"
@@ -203,12 +242,25 @@ export function SettingsPage() {
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  City
+                  City / Town / Village
                 </label>
                 <input
                   type="text"
                   value={profile.city}
                   onChange={(e) => setProfile({ ...profile, city: e.target.value })}
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  District
+                </label>
+                <input
+                  type="text"
+                  value={profile.district || ''}
+                  onChange={(e) => setProfile({ ...profile, district: e.target.value })}
+                  placeholder="e.g. Theni"
                   className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg"
                 />
               </div>
@@ -259,7 +311,7 @@ export function SettingsPage() {
               <span>Goods &amp; Services Tax (GST) Information</span>
             </h3>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
                   GSTIN (15 Digits)
@@ -268,8 +320,31 @@ export function SettingsPage() {
                   type="text"
                   required
                   value={profile.gstin}
-                  onChange={(e) => setProfile({ ...profile, gstin: e.target.value.toUpperCase() })}
+                  onChange={(e) => {
+                    const clean = e.target.value.toUpperCase();
+                    const extractedPan = clean.length >= 12 ? clean.slice(2, 12) : profile.pan;
+                    const extractedStateCode = clean.length >= 2 ? clean.slice(0, 2) : profile.stateCode;
+                    setProfile({
+                      ...profile,
+                      gstin: clean,
+                      pan: extractedPan,
+                      stateCode: extractedStateCode,
+                    });
+                  }}
                   className="w-full px-3 py-2 text-xs font-mono font-bold uppercase border border-slate-300 rounded-lg"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  PAN (Permanent Account Number)
+                </label>
+                <input
+                  type="text"
+                  value={profile.pan || ''}
+                  onChange={(e) => setProfile({ ...profile, pan: e.target.value.toUpperCase() })}
+                  placeholder="e.g. ARQPH7005P"
+                  className="w-full px-3 py-2 text-xs font-mono uppercase border border-slate-300 rounded-lg"
                 />
               </div>
 

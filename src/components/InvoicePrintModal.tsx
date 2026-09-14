@@ -23,25 +23,33 @@ export function InvoicePrintModal({
   if (!isOpen || !invoice) return null;
 
   const defaultBiz: BusinessSettings = settings || {
-    businessName: 'SM Autos & Batteries',
+    businessName: 'SM AUTOS AND BATTERY',
+    legalName: 'HARIHARAN SHANMUGASUNDARAM',
+    tradeName: 'SM AUTOS AND BATTERY',
+    constitution: 'Proprietorship',
     tagline: 'Automotive Batteries, Lubricants & Genuine Spares',
-    address: 'Shop No. 12, Main Auto Market, Opp. Transport Nagar, GT Road',
-    city: 'Delhi',
-    state: 'Delhi',
-    stateCode: '07',
-    pincode: '110033',
+    address: 'NO 5/1, WARD NO 10, ST-3, MELAPUDU THERU, Timmarasanayakkanur',
+    buildingNo: 'NO 5/1, WARD NO 10',
+    roadStreet: 'ST-3, MELAPUDU THERU',
+    locality: 'Timmarasanayakkanur',
+    city: 'Aundipatti',
+    district: 'Theni',
+    state: 'Tamil Nadu',
+    stateCode: '33',
+    pincode: '625536',
     phone: '+91 98765 43210',
     alternatePhone: '+91 98111 22334',
     email: 'billing@smautos.com',
-    gstin: '07AABCS1234M1Z8',
+    gstin: '33ARQPH7005P1ZE',
+    pan: 'ARQPH7005P',
     invoicePrefix: 'SMA-2026',
     nextInvoiceNumber: 1000,
     termsAndConditions:
-      '1. Goods once sold will be replaced within 7 days against valid bill.\n2. Battery warranty is handled directly as per manufacturer norms.\n3. All electrical parts carry test-warranty only.',
+      '1. Goods once sold will be replaced within 7 days against valid bill.\n2. Battery warranty is handled directly as per manufacturer norms.\n3. All electrical parts carry test-warranty only.\n4. Subject to Theni jurisdiction only.',
     bankName: 'HDFC Bank Ltd',
     bankAccount: '50200012345678',
     ifscCode: 'HDFC0001234',
-    bankBranch: 'GT Road Azadpur, Delhi',
+    bankBranch: 'Aundipatti Branch, Theni',
     upiId: 'smautos@hdfcbank',
     defaultGstRate: 18,
     maxDiscountPercent: 25,
@@ -107,12 +115,30 @@ export function InvoicePrintModal({
                   Original for Recipient • GST TAX INVOICE
                 </span>
                 <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 uppercase">
-                  {defaultBiz.businessName}
+                  {defaultBiz.tradeName || defaultBiz.businessName}
                 </h1>
-                <p className="text-xs text-slate-600 italic font-medium">{defaultBiz.tagline}</p>
-                <p className="text-xs text-slate-700 mt-1 max-w-md leading-relaxed">
-                  {defaultBiz.address}, {defaultBiz.city} - {defaultBiz.pincode}
-                </p>
+                <div className="flex flex-wrap items-center gap-x-2 text-xs text-slate-600 mt-0.5 font-medium">
+                  {defaultBiz.legalName && (
+                    <span>
+                      <strong className="text-slate-800">Proprietor:</strong> {defaultBiz.legalName}
+                    </span>
+                  )}
+                  {defaultBiz.constitution && (
+                    <span className="px-1.5 py-0.2 bg-slate-100 print:bg-transparent border border-slate-300 rounded text-[10px] font-semibold text-slate-700">
+                      {defaultBiz.constitution}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-600 italic font-medium mt-0.5">{defaultBiz.tagline}</p>
+                <div className="text-xs text-slate-700 mt-1 max-w-lg leading-relaxed">
+                  <p className="font-semibold text-slate-800">
+                    {defaultBiz.address}
+                  </p>
+                  <p>
+                    {defaultBiz.city}
+                    {defaultBiz.district ? `, ${defaultBiz.district} Dist.` : ''}, {defaultBiz.state} - {defaultBiz.pincode}
+                  </p>
+                </div>
                 <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-slate-700 mt-1">
                   <span>
                     <strong>Phone:</strong> {defaultBiz.phone}
@@ -121,10 +147,15 @@ export function InvoicePrintModal({
                     <strong>Email:</strong> {defaultBiz.email}
                   </span>
                 </div>
-                <div className="mt-1 flex items-center gap-3">
+                <div className="mt-1.5 flex flex-wrap items-center gap-2 sm:gap-3">
                   <span className="inline-block bg-slate-100 print:bg-transparent px-2 py-0.5 rounded font-mono font-bold text-slate-900 text-xs border border-slate-300">
                     GSTIN: {defaultBiz.gstin}
                   </span>
+                  {defaultBiz.pan && (
+                    <span className="inline-block bg-slate-100 print:bg-transparent px-2 py-0.5 rounded font-mono font-bold text-slate-900 text-xs border border-slate-300">
+                      PAN: {defaultBiz.pan}
+                    </span>
+                  )}
                   <span className="text-xs font-semibold text-slate-700">
                     State: {defaultBiz.state} (Code: {defaultBiz.stateCode})
                   </span>
@@ -389,15 +420,20 @@ export function InvoicePrintModal({
 
           {/* Signature & Declaration */}
           <div className="pt-6 border-t border-slate-300 flex justify-between items-end mt-4">
-            <div className="text-[10px] text-slate-500 max-w-xs">
-              This is a computer generated tax invoice. Subject to Delhi jurisdiction only.
+            <div className="text-[10px] text-slate-500 max-w-xs leading-relaxed">
+              This is a computer generated tax invoice. Subject to {defaultBiz.district || defaultBiz.city || 'Theni'} jurisdiction only.
             </div>
             <div className="text-center">
-              <div className="h-12 border-b border-dashed border-slate-400 w-44 mb-1"></div>
+              <div className="h-12 border-b border-dashed border-slate-400 w-52 mb-1"></div>
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-800 block">
-                For {defaultBiz.businessName}
+                For {defaultBiz.tradeName || defaultBiz.businessName}
               </span>
-              <span className="text-[9px] text-slate-500">Authorized Signatory</span>
+              <span className="text-[9px] text-slate-600 block">Authorized Signatory / Proprietor</span>
+              {defaultBiz.legalName && (
+                <span className="text-[9px] font-semibold text-slate-700 block">
+                  ({defaultBiz.legalName})
+                </span>
+              )}
             </div>
           </div>
         </div>

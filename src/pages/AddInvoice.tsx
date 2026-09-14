@@ -18,6 +18,10 @@ import {
   ChevronDown,
   Percent,
   Sparkles,
+  RefreshCw,
+  Lock,
+  Unlock,
+  Hash,
 } from 'lucide-react';
 import { Product, Customer, Invoice, PaymentMode } from '../types/index.js';
 import { api } from '../services/api.js';
@@ -99,8 +103,14 @@ export function AddInvoice({ onInvoiceCreated, onNavigateToList }: AddInvoicePro
   const [loadingInitial, setLoadingInitial] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  // Next Invoice Number
+  // Next Invoice Number: Keep both Auto-generated and Dynamic options
+  const [invoiceNumberMode, setInvoiceNumberMode] = useState<'auto' | 'dynamic'>('auto');
+  const [autoInvoiceNumber, setAutoInvoiceNumber] = useState('SMA000226');
+  const [dynamicInvoiceNumber, setDynamicInvoiceNumber] = useState('');
+  const [dynamicPattern, setDynamicPattern] = useState<'date' | 'fiscal' | 'timestamp' | 'random' | 'custom'>('date');
+  const [allowAutoEdit, setAllowAutoEdit] = useState(false);
   const [invoiceNumber, setInvoiceNumber] = useState('SMA000226');
+  const [editingCustomTaxId, setEditingCustomTaxId] = useState<string | null>(null);
 
   // Customer details
   const [mobileNumber, setMobileNumber] = useState('');
@@ -199,7 +209,9 @@ export function AddInvoice({ onInvoiceCreated, onNavigateToList }: AddInvoicePro
         if (settings) {
           const num = settings.nextInvoiceNumber || 1001;
           const prefix = settings.invoicePrefix || 'SMA';
-          setInvoiceNumber(`${prefix}${String(num).padStart(6, '0')}`);
+          const nextAuto = `${prefix}${String(num).padStart(6, '0')}`;
+          setAutoInvoiceNumber(nextAuto);
+          setInvoiceNumber(nextAuto);
           if (settings.termsAndConditions) {
             setTermsAndConditions(settings.termsAndConditions);
           }
@@ -212,6 +224,84 @@ export function AddInvoice({ onInvoiceCreated, onNavigateToList }: AddInvoicePro
     }
     loadData();
   }, []);
+
+  // Generate Dynamic Invoice Number based on chosen pattern
+  const generateDynamicNumber = (
+    pattern: 'date' | 'fiscal' | 'timestamp' | 'random' | 'custom' = dynamicPattern
+  ) => {
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const yy = String(yyyy).slice(-2);
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const rand4 = Math.floor(1000 + Math.random() * 9000);
+    const randAlpha = Math.random().toString(36).substring(2, 6).toUpperCase();
+
+    // Fiscal year e.g. 26-27
+    const currentMonth = now.getMonth() + 1;
+    const startYear = currentMonth >= 4 ? yy : String(parseInt(yy, 10) - 1).padStart(2, '0');
+    const endYear = currentMonth >= 4 ? String(parseInt(yy, 10) + 1).padStart(2, '0') : yy;
+    const fyStr = `${startYear}-${endYear}`;
+
+    let result = '';
+    switch (pattern) {
+      case 'date':
+        result = `SMA-${yyyy}${mm}-${rand4}`;
+        break;
+      case 'fiscal':
+        result = `INV/${fyStr}/${rand4}`;
+        break;
+      case 'timestamp':
+        result = `SMA-${yy}${mm}${dd}-${rand4}`;
+        break;
+      case 'random':
+        result = `SMA-DYN-${randAlpha}${Math.floor(10 + Math.random() * 90)}`;
+        break;
+      case 'custom':
+      default:
+        result = `SMA-DYN-${rand4}`;
+        break;
+    }
+    setDynamicInvoiceNumber(result);
+    setInvoiceNumber(result);
+    return result;
+  };
+
+  // Switch between Auto-generated and Dynamic invoice number
+  const handleSwitchInvoiceMode = (mode: 'auto' | 'dynamic') => {
+    setInvoiceNumberMode(mode);
+    if (mode === 'auto') {
+      setInvoiceNumber(autoInvoiceNumber);
+      showToast('Switched to Auto-generated sequential invoice number', 'info');
+    } else {
+      let num = dynamicInvoiceNumber;
+      if (!num) {
+        num = generateDynamicNumber(dynamicPattern);
+      } else {
+        setInvoiceNumber(num);
+      }
+      showToast('Switched to Dynamic invoice number generator', 'info');
+    }
+  };
+
+  // Sync latest sequence from backend settings
+  const handleSyncNextInvoiceNumber = async () => {
+    try {
+      const settings = await api.getSettings();
+      if (settings) {
+        const num = settings.nextInvoiceNumber || 1001;
+        const prefix = settings.invoicePrefix || 'SMA';
+        const nextAuto = `${prefix}${String(num).padStart(6, '0')}`;
+        setAutoInvoiceNumber(nextAuto);
+        if (invoiceNumberMode === 'auto') {
+          setInvoiceNumber(nextAuto);
+        }
+        showToast(`Synced latest sequence number: ${nextAuto}`, 'info');
+      }
+    } catch {
+      showToast('Could not sync latest sequence number', 'error');
+    }
+  };
 
   // Customer Auto-Search by Mobile Number
   const handleMobileChange = (val: string) => {
@@ -285,16 +375,30 @@ export function AddInvoice({ onInvoiceCreated, onNavigateToList }: AddInvoicePro
       );
       showToast('GST disabled: Invoice set to 0% (Tax Exempted)', 'info');
     } else {
-      // Restore default GST rates from original products
+      // Restore default GST rates: 18% (Batteries & Spares), 5% (Specialized Parts)
       setItems((prev) =>
         prev.map((item) => {
           const origProduct = products.find((p) => p.id === item.productId);
-          const restoredTax =
-            globalGstRate === 'custom'
-              ? customGstRate
-              : globalGstRate !== 'item-wise'
-              ? parseFloat(globalGstRate) || 18
-              : origProduct?.gstRate ?? 18;
+          let restoredTax = 18;
+          if (globalGstRate === 'custom') {
+            restoredTax = customGstRate;
+          } else if (globalGstRate === '5') {
+            restoredTax = 5;
+          } else if (globalGstRate === '18') {
+            restoredTax = 18;
+          } else {
+            // item-wise: specialized parts are 5%, all batteries and spares are 18%
+            if (
+              origProduct?.gstRate === 5 ||
+              origProduct?.category?.toLowerCase().includes('specialized')
+            ) {
+              restoredTax = 5;
+            } else if (origProduct?.gstRate && origProduct.gstRate !== 28 && origProduct.gstRate !== 12) {
+              restoredTax = origProduct.gstRate;
+            } else {
+              restoredTax = 18;
+            }
+          }
 
           const qty = item.quantity;
           const rate = item.rate;
@@ -323,16 +427,28 @@ export function AddInvoice({ onInvoiceCreated, onNavigateToList }: AddInvoicePro
 
     let targetTaxRate: number | null = null;
     if (rateKey !== 'item-wise') {
-      targetTaxRate = parseFloat(rateKey) || 0;
+      targetTaxRate = parseFloat(rateKey) || 18;
     }
 
     setItems((prev) =>
       prev.map((item) => {
         const origProduct = products.find((p) => p.id === item.productId);
-        const appliedTax =
-          targetTaxRate !== null
-            ? targetTaxRate
-            : origProduct?.gstRate ?? 18;
+        let appliedTax = 18;
+        if (targetTaxRate !== null) {
+          appliedTax = targetTaxRate;
+        } else {
+          // item-wise default
+          if (
+            origProduct?.gstRate === 5 ||
+            origProduct?.category?.toLowerCase().includes('specialized')
+          ) {
+            appliedTax = 5;
+          } else if (origProduct?.gstRate && origProduct.gstRate !== 28 && origProduct.gstRate !== 12) {
+            appliedTax = origProduct.gstRate;
+          } else {
+            appliedTax = 18;
+          }
+        }
 
         const qty = item.quantity;
         const rate = item.rate;
@@ -410,15 +526,27 @@ export function AddInvoice({ onInvoiceCreated, onNavigateToList }: AddInvoicePro
       }
     }
 
-    // Determine GST tax rate dynamically
+    // Determine GST tax rate dynamically (Batteries & spares: 18%, Specialized parts: 5%, or Custom)
     let initialTax = 0;
     if (applyGst) {
       if (globalGstRate === 'custom') {
         initialTax = customGstRate;
-      } else if (globalGstRate !== 'item-wise') {
-        initialTax = parseFloat(globalGstRate) || 0;
+      } else if (globalGstRate === '5') {
+        initialTax = 5;
+      } else if (globalGstRate === '18') {
+        initialTax = 18;
       } else {
-        initialTax = product.gstRate || 18;
+        // item-wise: specialized parts are 5%, all batteries and spares are 18%
+        if (
+          product.gstRate === 5 ||
+          product.category?.toLowerCase().includes('specialized')
+        ) {
+          initialTax = 5;
+        } else if (product.gstRate && product.gstRate !== 28 && product.gstRate !== 12) {
+          initialTax = product.gstRate;
+        } else {
+          initialTax = 18;
+        }
       }
     }
 
@@ -578,6 +706,7 @@ export function AddInvoice({ onInvoiceCreated, onNavigateToList }: AddInvoicePro
     try {
       setSubmitting(true);
       const invoicePayload = {
+        invoiceNumber: invoiceNumber.trim() || undefined,
         customerName: customerName.trim(),
         customerPhone: mobileNumber.trim(),
         customerId: selectedCustomerId || undefined,
@@ -634,6 +763,7 @@ export function AddInvoice({ onInvoiceCreated, onNavigateToList }: AddInvoicePro
     try {
       setSubmitting(true);
       const invoicePayload = {
+        invoiceNumber: invoiceNumber.trim() || undefined,
         customerName: customerName.trim(),
         customerPhone: mobileNumber.trim(),
         customerId: selectedCustomerId || undefined,
@@ -726,16 +856,138 @@ export function AddInvoice({ onInvoiceCreated, onNavigateToList }: AddInvoicePro
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-4 sm:p-6 space-y-4">
         {/* Row 1: Invoice Number, Mobile Number, Customer Name */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Invoice Number: Auto-generated & Dynamic Options */}
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">
-              Invoice Number
-            </label>
-            <input
-              type="text"
-              readOnly
-              value={invoiceNumber}
-              className="w-full px-3 py-2 text-xs sm:text-sm bg-slate-100 border border-slate-300 rounded-lg font-mono font-bold text-slate-700 select-all cursor-not-allowed"
-            />
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                <span>Invoice Number</span>
+                <span
+                  className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                    invoiceNumberMode === 'auto'
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'bg-purple-100 text-purple-700'
+                  }`}
+                >
+                  {invoiceNumberMode === 'auto' ? 'Auto' : 'Dynamic'}
+                </span>
+              </label>
+
+              {/* Mode Switcher: Both Auto & Dynamic kept */}
+              <div className="inline-flex rounded-lg border border-slate-300 p-0.5 bg-slate-100 text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => handleSwitchInvoiceMode('auto')}
+                  className={`px-2 py-0.5 font-bold rounded transition-all cursor-pointer ${
+                    invoiceNumberMode === 'auto'
+                      ? 'bg-white text-blue-700 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                  title="Auto-generated sequential number"
+                >
+                  ⚡ Auto
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSwitchInvoiceMode('dynamic')}
+                  className={`px-2 py-0.5 font-bold rounded transition-all cursor-pointer ${
+                    invoiceNumberMode === 'dynamic'
+                      ? 'bg-white text-purple-700 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                  title="Dynamic pattern generator"
+                >
+                  🎲 Dynamic
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="relative flex items-center">
+                <input
+                  type="text"
+                  value={invoiceNumber}
+                  readOnly={invoiceNumberMode === 'auto' && !allowAutoEdit}
+                  onChange={(e) => {
+                    const val = e.target.value.toUpperCase();
+                    setInvoiceNumber(val);
+                    if (invoiceNumberMode === 'dynamic') {
+                      setDynamicInvoiceNumber(val);
+                    }
+                  }}
+                  placeholder={
+                    invoiceNumberMode === 'auto' ? 'Auto Sequence' : 'Enter or Roll Dynamic #'
+                  }
+                  className={`w-full px-3 py-2 text-xs sm:text-sm font-mono font-bold rounded-lg border transition-all ${
+                    invoiceNumberMode === 'auto' && !allowAutoEdit
+                      ? 'bg-slate-100 border-slate-300 text-slate-800'
+                      : 'bg-white border-purple-400 focus:ring-2 focus:ring-purple-500 text-purple-950'
+                  } pr-16`}
+                />
+
+                {/* Auto Mode Controls */}
+                {invoiceNumberMode === 'auto' && (
+                  <div className="absolute right-1.5 flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setAllowAutoEdit(!allowAutoEdit)}
+                      title={allowAutoEdit ? 'Lock Auto Sequence' : 'Unlock to edit sequence'}
+                      className="p-1 rounded text-slate-500 hover:text-slate-800 hover:bg-slate-200 transition-colors cursor-pointer"
+                    >
+                      {allowAutoEdit ? (
+                        <Lock className="w-3.5 h-3.5 text-amber-600" />
+                      ) : (
+                        <Unlock className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSyncNextInvoiceNumber}
+                      title="Sync next sequence from settings"
+                      className="p-1 rounded text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+
+                {/* Dynamic Mode Roll Button */}
+                {invoiceNumberMode === 'dynamic' && (
+                  <div className="absolute right-1.5 flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => generateDynamicNumber(dynamicPattern)}
+                      title="Generate new dynamic number"
+                      className="px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-[11px] font-bold flex items-center gap-1 shadow-xs transition-colors cursor-pointer"
+                    >
+                      <Sparkles className="w-3 h-3" />
+                      <span>Roll</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Dynamic Mode Format Selector */}
+              {invoiceNumberMode === 'dynamic' && (
+                <div className="flex items-center justify-between text-[11px] bg-purple-50/70 px-2 py-1 rounded-md border border-purple-200">
+                  <span className="text-purple-800 font-semibold">Format:</span>
+                  <select
+                    value={dynamicPattern}
+                    onChange={(e) => {
+                      const pat = e.target.value as any;
+                      setDynamicPattern(pat);
+                      generateDynamicNumber(pat);
+                    }}
+                    className="px-1.5 py-0.5 bg-white border border-purple-300 rounded text-[11px] font-semibold text-purple-900 focus:outline-none"
+                  >
+                    <option value="date">Date-based (SMA-YYYYMM-XXXX)</option>
+                    <option value="fiscal">Fiscal Year (INV/26-27/XXXX)</option>
+                    <option value="timestamp">Daily (SMA-YYMMDD-XXXX)</option>
+                    <option value="random">Alpha-num (SMA-DYN-XXXX)</option>
+                    <option value="custom">Freeform Custom Typing</option>
+                  </select>
+                </div>
+              )}
+            </div>
           </div>
 
           <div>
@@ -895,11 +1147,8 @@ export function AddInvoice({ onInvoiceCreated, onNavigateToList }: AddInvoicePro
                   className="px-2.5 py-1 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-800 focus:ring-1 focus:ring-[#c81e3a]"
                 >
                   <option value="item-wise">Item-wise Default</option>
-                  <option value="28">28% (Automotive Batteries)</option>
-                  <option value="18">18% (Spares &amp; Lubricants)</option>
-                  <option value="12">12% (Accessories)</option>
+                  <option value="18">18% (All Batteries &amp; Spares)</option>
                   <option value="5">5% (Specialized Parts)</option>
-                  <option value="0">0% (Nil / Exempt)</option>
                   <option value="custom">Custom Dynamic Rate...</option>
                 </select>
               </div>
@@ -1151,22 +1400,51 @@ export function AddInvoice({ onInvoiceCreated, onNavigateToList }: AddInvoicePro
                     {/* Dynamic Tax (%) Dropdown with Custom Input Support */}
                     <td className="py-2.5 px-2">
                       {applyGst ? (
-                        <select
-                          value={item.tax}
-                          onChange={(e) =>
-                            updateItemField(item.id, 'tax', parseFloat(e.target.value) || 0)
-                          }
-                          className="px-2 py-1 border border-slate-300 rounded text-xs font-medium focus:ring-1 focus:ring-[#c81e3a]"
-                        >
-                          <option value="28">28%</option>
-                          <option value="18">18%</option>
-                          <option value="12">12%</option>
-                          <option value="5">5%</option>
-                          <option value="0">0% (Nil)</option>
-                          {![0, 5, 12, 18, 28].includes(item.tax) && (
-                            <option value={item.tax}>{item.tax}% (Custom)</option>
-                          )}
-                        </select>
+                        editingCustomTaxId === item.id || ![18, 5].includes(item.tax) ? (
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              step="0.5"
+                              value={item.tax}
+                              onChange={(e) =>
+                                updateItemField(item.id, 'tax', parseFloat(e.target.value) || 0)
+                              }
+                              className="w-14 px-1.5 py-1 border border-amber-400 bg-amber-50/70 rounded text-xs font-bold text-center text-slate-900"
+                              placeholder="Rate"
+                              autoFocus
+                            />
+                            <span className="text-[11px] font-bold text-slate-600">%</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                updateItemField(item.id, 'tax', 18);
+                                setEditingCustomTaxId(null);
+                              }}
+                              title="Reset to 18% (Batteries & Spares)"
+                              className="px-1.5 py-0.5 text-[10px] font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded cursor-pointer"
+                            >
+                              18%
+                            </button>
+                          </div>
+                        ) : (
+                          <select
+                            value={item.tax}
+                            onChange={(e) => {
+                              if (e.target.value === 'custom') {
+                                setEditingCustomTaxId(item.id);
+                              } else {
+                                updateItemField(item.id, 'tax', parseFloat(e.target.value) || 0);
+                              }
+                            }}
+                            className="px-2 py-1 border border-slate-300 rounded text-xs font-medium focus:ring-1 focus:ring-[#c81e3a] bg-white cursor-pointer"
+                          >
+                            <option value="18">18% (Batteries &amp; Spares)</option>
+                            <option value="5">5% (Specialized Parts)</option>
+                            <option value="custom">Custom Dynamic Rate...</option>
+                          </select>
+                        )
                       ) : (
                         <span className="px-2 py-1 bg-slate-100 border border-slate-200 rounded text-[11px] font-semibold text-slate-500">
                           0% Exempt

@@ -18,6 +18,8 @@ import {
   Settings,
   UserCheck,
   ShieldCheck,
+  ShieldAlert,
+  BookOpen,
   LogOut,
   X,
   ChevronRight,
@@ -113,6 +115,7 @@ export function Sidebar({ activePage, onNavigate, isOpen, onClose }: SidebarProp
       items: [
         { id: 'expenses', label: 'Expenses', icon: Wallet },
         { id: 'payments', label: 'Payments', icon: CreditCard },
+        { id: 'ledgers', label: 'Ledger Management', icon: BookOpen },
       ],
     },
     {
@@ -127,8 +130,11 @@ export function Sidebar({ activePage, onNavigate, isOpen, onClose }: SidebarProp
       items: [{ id: 'reports', label: 'Payment Summary', icon: BarChart3 }],
     },
     {
-      category: 'SETTINGS',
-      items: [{ id: 'settings', label: 'Settings', icon: Settings }],
+      category: 'SETTINGS & AUDIT',
+      items: [
+        { id: 'settings', label: 'Settings', icon: Settings },
+        { id: 'audit', label: 'Audit Logs', icon: ShieldAlert },
+      ],
     },
     {
       category: 'USER MANAGEMENT',

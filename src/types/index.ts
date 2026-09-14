@@ -227,9 +227,16 @@ export interface ReturnRecord {
 
 export interface BusinessSettings {
   businessName: string;
+  legalName?: string;
+  tradeName?: string;
+  constitution?: string;
   tagline: string;
   address: string;
+  buildingNo?: string;
+  roadStreet?: string;
+  locality?: string;
   city: string;
+  district?: string;
   state: string;
   stateCode: string;
   pincode: string;

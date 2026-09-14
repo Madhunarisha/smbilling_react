@@ -164,9 +164,39 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
-  // Ledgers
-  getCustomerLedger: (customerId: string) => request<CustomerLedgerEntry[]>(`/ledger/customer/${customerId}`),
-  getSupplierLedger: (supplierId: string) => request<SupplierLedgerEntry[]>(`/ledger/supplier/${supplierId}`),
+  // Ledger Management
+  getCustomerLedger: (customerId: string) =>
+    request<CustomerLedgerEntry[]>(`/ledger/customer/${customerId}`),
+  getSupplierLedger: (supplierId: string) =>
+    request<SupplierLedgerEntry[]>(`/ledger/supplier/${supplierId}`),
+  addCustomerLedgerEntry: (data: {
+    customerId: string;
+    description?: string;
+    type?: string;
+    referenceNo?: string;
+    debit?: number;
+    credit?: number;
+    notes?: string;
+    date?: string;
+  }) =>
+    request<{ entry: CustomerLedgerEntry; customer: Customer }>('/ledger/customer/entry', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  addSupplierLedgerEntry: (data: {
+    supplierId: string;
+    description?: string;
+    type?: string;
+    referenceNo?: string;
+    debit?: number;
+    credit?: number;
+    notes?: string;
+    date?: string;
+  }) =>
+    request<{ entry: SupplierLedgerEntry; supplier: Supplier }>('/ledger/supplier/entry', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
   getBusinessLedger: (params?: { fromDate?: string; toDate?: string }) => {
     const searchParams = new URLSearchParams();
     if (params?.fromDate) searchParams.set('fromDate', params.fromDate);
@@ -202,5 +232,18 @@ export const api = {
     }),
 
   // Audit Logs
-  getAuditLogs: () => request<AuditLog[]>('/audit-logs'),
+  getAuditLogs: (params?: { module?: string; action?: string; userId?: string; search?: string; limit?: number }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.module) searchParams.set('module', params.module);
+    if (params?.action) searchParams.set('action', params.action);
+    if (params?.userId) searchParams.set('userId', params.userId);
+    if (params?.search) searchParams.set('search', params.search);
+    if (params?.limit) searchParams.set('limit', String(params.limit));
+    const qs = searchParams.toString();
+    return request<AuditLog[]>(`/audit-logs${qs ? `?${qs}` : ''}`);
+  },
+  clearAuditLogs: () =>
+    request<{ message: string }>('/audit-logs/clear', {
+      method: 'POST',
+    }),
 };
