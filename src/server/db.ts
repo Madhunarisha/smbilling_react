@@ -1,6 +1,8 @@
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import bcrypt from 'bcryptjs';
+import { MongoClient, Collection } from 'mongodb';
 import {
   User,
   Category,
@@ -19,9 +21,6 @@ import {
   DashboardStats,
 } from '../types/index.js';
 
-const DATA_DIR = path.join(process.cwd(), 'data');
-const DB_FILE = path.join(DATA_DIR, 'db.json');
-
 interface DatabaseSchema {
   users: (User & { passwordHash: string })[];
   categories: Category[];
@@ -39,11 +38,101 @@ interface DatabaseSchema {
 }
 
 let dbCache: DatabaseSchema | null = null;
+let mongoCollection: Collection | null = null;
+let mongoInitPromise: Promise<void> | null = null;
 
-function ensureDataDir() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+function normalizeMongoUri(uri: string): string {
+  // If uri has a raw '%' in the user:pass portion that is not followed by 2 hex digits, percent-encode it as %25
+  return uri.replace(/:([^@]+)@/, (_, pass) => {
+    const fixed = pass.replace(/%(?![0-9A-Fa-f]{2})/g, '%25');
+    return `:${fixed}@`;
+  });
+}
+
+function getStoragePaths(): { dataDir: string; dbFile: string } {
+  const localDataDir = path.join(process.cwd(), 'data');
+  const localDbFile = path.join(localDataDir, 'db.json');
+
+  try {
+    if (!fs.existsSync(localDataDir)) {
+      fs.mkdirSync(localDataDir, { recursive: true });
+    }
+    const testFile = path.join(localDataDir, '.write-test');
+    fs.writeFileSync(testFile, 'ok');
+    fs.unlinkSync(testFile);
+    return { dataDir: localDataDir, dbFile: localDbFile };
+  } catch {
+    // Read-only serverless environment (e.g. Vercel / AWS Lambda)
+    const tmpDataDir = path.join(os.tmpdir(), 'smbilling-data');
+    if (!fs.existsSync(tmpDataDir)) {
+      fs.mkdirSync(tmpDataDir, { recursive: true });
+    }
+    const tmpDbFile = path.join(tmpDataDir, 'db.json');
+    if (!fs.existsSync(tmpDbFile) && fs.existsSync(localDbFile)) {
+      try {
+        fs.copyFileSync(localDbFile, tmpDbFile);
+      } catch {}
+    }
+    return { dataDir: tmpDataDir, dbFile: tmpDbFile };
   }
+}
+
+async function initMongo(): Promise<void> {
+  const rawUri = process.env.MONGODB_URI;
+  if (!rawUri) return;
+
+  try {
+    const uri = normalizeMongoUri(rawUri);
+    const client = new MongoClient(uri, {
+      serverSelectionTimeoutMS: 5000,
+      connectTimeoutMS: 10000,
+    });
+    await client.connect();
+    const db = client.db('smbilling');
+    mongoCollection = db.collection('erp_data');
+    console.log('[MongoDB] Connected successfully to MongoDB Atlas.');
+
+    // Attempt to pull latest data from MongoDB into cache if available
+    const doc = await mongoCollection.findOne({ _id: 'main_database' as any });
+    if (doc) {
+      const { _id, updatedAt, ...rest } = doc as any;
+      dbCache = rest as DatabaseSchema;
+      try {
+        const { dbFile } = getStoragePaths();
+        fs.writeFileSync(dbFile, JSON.stringify(dbCache, null, 2), 'utf-8');
+      } catch {}
+      console.log('[MongoDB] Synced latest dataset from MongoDB Atlas.');
+    } else if (dbCache) {
+      await mongoCollection.replaceOne(
+        { _id: 'main_database' as any },
+        { ...dbCache, _id: 'main_database', updatedAt: new Date() } as any,
+        { upsert: true }
+      );
+      console.log('[MongoDB] Seeded initial data into MongoDB Atlas.');
+    }
+  } catch (err: any) {
+    console.warn('[MongoDB] Notice: Running with local/serverless fallback (' + err?.message + ').');
+  }
+}
+
+function triggerMongoSync(data: DatabaseSchema) {
+  if (!process.env.MONGODB_URI) return;
+  if (!mongoInitPromise) {
+    mongoInitPromise = initMongo();
+  }
+  mongoInitPromise.then(async () => {
+    if (mongoCollection) {
+      try {
+        await mongoCollection.replaceOne(
+          { _id: 'main_database' as any },
+          { ...data, _id: 'main_database', updatedAt: new Date() } as any,
+          { upsert: true }
+        );
+      } catch (err: any) {
+        console.warn('[MongoDB] Sync failed:', err?.message);
+      }
+    }
+  }).catch(() => {});
 }
 
 export function getInitialData(): DatabaseSchema {
@@ -1072,30 +1161,45 @@ export function getInitialData(): DatabaseSchema {
 
 export function readDb(): DatabaseSchema {
   if (dbCache) return dbCache;
-  ensureDataDir();
-  if (!fs.existsSync(DB_FILE)) {
+
+  // Kick off background MongoDB initialization if MONGODB_URI is present
+  if (process.env.MONGODB_URI && !mongoInitPromise) {
+    mongoInitPromise = initMongo();
+  }
+
+  const { dbFile } = getStoragePaths();
+  if (!fs.existsSync(dbFile)) {
     const initial = getInitialData();
-    fs.writeFileSync(DB_FILE, JSON.stringify(initial, null, 2), 'utf-8');
+    try {
+      fs.writeFileSync(dbFile, JSON.stringify(initial, null, 2), 'utf-8');
+    } catch {}
     dbCache = initial;
     return dbCache;
   }
   try {
-    const raw = fs.readFileSync(DB_FILE, 'utf-8');
+    const raw = fs.readFileSync(dbFile, 'utf-8');
     dbCache = JSON.parse(raw);
     return dbCache!;
   } catch (err) {
     console.error('Failed to parse db.json, generating fresh default:', err);
     const initial = getInitialData();
-    fs.writeFileSync(DB_FILE, JSON.stringify(initial, null, 2), 'utf-8');
+    try {
+      fs.writeFileSync(dbFile, JSON.stringify(initial, null, 2), 'utf-8');
+    } catch {}
     dbCache = initial;
     return dbCache;
   }
 }
 
 export function writeDb(data: DatabaseSchema) {
-  ensureDataDir();
   dbCache = data;
-  fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf-8');
+  const { dbFile } = getStoragePaths();
+  try {
+    fs.writeFileSync(dbFile, JSON.stringify(data, null, 2), 'utf-8');
+  } catch (err: any) {
+    console.warn('Local file write error (falling back to memory/cloud):', err?.message);
+  }
+  triggerMongoSync(data);
 }
 
 export function logAudit(userId: string, userName: string, action: string, module: string, details: string, recordId?: string) {

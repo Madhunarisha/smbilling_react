@@ -55,45 +55,40 @@ async function request<T>(endpoint: string, options: RequestInit = {}, retries =
     return request<T>(endpoint, options, retries - 1);
   }
 
-  const contentType = res.headers.get('content-type') || '';
-  const isJson = contentType.includes('application/json');
+  const rawText = await res.text().catch(() => '');
+  let data: any = null;
+  let isJson = false;
 
-  if (!isJson) {
-    const rawText = await res.text().catch(() => '');
-    if (res.status === 401 || res.status === 403) {
-      localStorage.removeItem('smautos_token');
-      throw new Error('Your session has expired or is invalid. Please sign in again.');
-    }
-    if (res.status === 404) {
-      throw new Error(`API endpoint not found: ${endpoint}`);
-    }
-    if (res.status >= 500) {
-      throw new Error('Server is currently restarting or unavailable. Please wait a moment.');
-    }
-    // Any HTML / proxy page like "The page cannot be found"
-    if (rawText.toLowerCase().includes('the page') || rawText.includes('<!doctype html>')) {
-      throw new Error(`Server temporarily unavailable (${res.status}). Please try again.`);
-    }
-    throw new Error(
-      rawText.slice(0, 150).trim() || `Unexpected non-JSON response (status: ${res.status})`
-    );
-  }
-
-  let data: any;
   try {
-    data = await res.json();
-  } catch (parseErr) {
-    if (!res.ok) {
-      throw new Error(`Request failed with status ${res.status}`);
+    if (rawText && rawText.trim()) {
+      data = JSON.parse(rawText);
+      isJson = true;
     }
-    throw new Error('Invalid JSON received from server.');
+  } catch {
+    isJson = false;
   }
 
   if (!res.ok) {
     if (res.status === 401 || res.status === 403) {
       localStorage.removeItem('smautos_token');
+      throw new Error(data?.error || 'Invalid credentials or session expired. Please sign in again.');
     }
-    throw new Error(data?.error || `Request failed with status ${res.status}`);
+    if (res.status === 404) {
+      if (!isJson || rawText.includes('The page could not be found')) {
+        throw new Error(
+          `API endpoint '${endpoint}' was not found on the server (404). Ensure the backend API is deployed.`
+        );
+      }
+      throw new Error(data?.error || `Resource not found (404): ${endpoint}`);
+    }
+    if (res.status >= 500) {
+      throw new Error(data?.error || `Server error (${res.status}). Please try again shortly.`);
+    }
+    throw new Error(data?.error || rawText.slice(0, 150).trim() || `Request failed with status ${res.status}`);
+  }
+
+  if (!isJson) {
+    throw new Error('Received unexpected non-JSON response from server.');
   }
 
   return data as T;
