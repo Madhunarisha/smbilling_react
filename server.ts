@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
@@ -5,7 +6,7 @@ import { apiRouter } from './src/server/api.js';
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
   // Body parser middlewares
   app.use(express.json({ limit: '10mb' }));
@@ -19,6 +20,7 @@ async function startServer() {
     res.json({
       status: 'ok',
       service: 'SM Autos & Batteries ERP Backend',
+      mongoConfigured: Boolean(process.env.MONGODB_URI),
       timestamp: new Date().toISOString(),
     });
   });
@@ -61,6 +63,12 @@ async function startServer() {
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`SM Autos & Batteries ERP Server running on http://0.0.0.0:${PORT}`);
+    if (process.env.MONGODB_URI) {
+      const masked = process.env.MONGODB_URI.replace(/:([^@]+)@/, ':****@');
+      console.log(`MongoDB URI configured: ${masked}`);
+    } else {
+      console.log('MongoDB URI not configured. Using local storage.');
+    }
   });
 }
 
