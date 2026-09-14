@@ -1018,6 +1018,42 @@
   },
   "auditLogs": [
     {
+      "id": "log-1789360340300-7ls7",
+      "userId": "usr-admin",
+      "userName": "Sardar Manjit Singh",
+      "action": "USER_LOGIN",
+      "module": "Auth",
+      "details": "User logged in: admin",
+      "timestamp": "2026-09-14T04:32:20.300Z"
+    },
+    {
+      "id": "log-1789360239922-ui7x",
+      "userId": "usr-admin",
+      "userName": "Sardar Manjit Singh",
+      "action": "USER_LOGIN",
+      "module": "Auth",
+      "details": "User logged in: admin",
+      "timestamp": "2026-09-14T04:30:39.922Z"
+    },
+    {
+      "id": "log-1789360235929-j77j",
+      "userId": "usr-admin",
+      "userName": "Sardar Manjit Singh",
+      "action": "USER_LOGIN",
+      "module": "Auth",
+      "details": "User logged in: admin",
+      "timestamp": "2026-09-14T04:30:35.929Z"
+    },
+    {
+      "id": "log-1789360233232-axrk",
+      "userId": "usr-admin",
+      "userName": "Sardar Manjit Singh",
+      "action": "USER_LOGIN",
+      "module": "Auth",
+      "details": "User logged in: admin",
+      "timestamp": "2026-09-14T04:30:33.232Z"
+    },
+    {
       "id": "log-1",
       "userId": "usr-admin",
       "userName": "Sardar Manjit Singh",

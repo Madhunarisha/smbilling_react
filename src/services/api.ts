@@ -21,20 +21,81 @@ function getAuthHeader(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...getAuthHeader(),
-      ...(options.headers || {}),
-    },
-  });
+async function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
-  const data = await res.json();
-  if (!res.ok) {
-    throw new Error(data.error || 'An error occurred while processing request.');
+async function request<T>(endpoint: string, options: RequestInit = {}, retries = 1): Promise<T> {
+  const url = `${API_BASE}${endpoint}`;
+  let res: Response;
+
+  try {
+    res = await fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeader(),
+        ...(options.headers || {}),
+      },
+    });
+  } catch (err: any) {
+    // Retry once if server is restarting or network hiccup occurs
+    if (retries > 0) {
+      await wait(500);
+      return request<T>(endpoint, options, retries - 1);
+    }
+    throw new Error(
+      `Unable to connect to server (${err?.message || 'Network error'}). Please verify the server is running.`
+    );
   }
+
+  // Handle server cold start / restart status codes (502, 503, 504) with retry
+  if ((res.status === 502 || res.status === 503 || res.status === 504) && retries > 0) {
+    await wait(800);
+    return request<T>(endpoint, options, retries - 1);
+  }
+
+  const contentType = res.headers.get('content-type') || '';
+  const isJson = contentType.includes('application/json');
+
+  if (!isJson) {
+    const rawText = await res.text().catch(() => '');
+    if (res.status === 401 || res.status === 403) {
+      localStorage.removeItem('smautos_token');
+      throw new Error('Your session has expired or is invalid. Please sign in again.');
+    }
+    if (res.status === 404) {
+      throw new Error(`API endpoint not found: ${endpoint}`);
+    }
+    if (res.status >= 500) {
+      throw new Error('Server is currently restarting or unavailable. Please wait a moment.');
+    }
+    // Any HTML / proxy page like "The page cannot be found"
+    if (rawText.toLowerCase().includes('the page') || rawText.includes('<!doctype html>')) {
+      throw new Error(`Server temporarily unavailable (${res.status}). Please try again.`);
+    }
+    throw new Error(
+      rawText.slice(0, 150).trim() || `Unexpected non-JSON response (status: ${res.status})`
+    );
+  }
+
+  let data: any;
+  try {
+    data = await res.json();
+  } catch (parseErr) {
+    if (!res.ok) {
+      throw new Error(`Request failed with status ${res.status}`);
+    }
+    throw new Error('Invalid JSON received from server.');
+  }
+
+  if (!res.ok) {
+    if (res.status === 401 || res.status === 403) {
+      localStorage.removeItem('smautos_token');
+    }
+    throw new Error(data?.error || `Request failed with status ${res.status}`);
+  }
+
   return data as T;
 }
 

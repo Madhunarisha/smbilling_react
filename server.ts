@@ -23,6 +23,27 @@ async function startServer() {
     });
   });
 
+  // Catch-all for undefined API routes - MUST return JSON, never fall through to Vite HTML
+  app.all('/api/*', (req, res) => {
+    res.status(404).json({
+      error: `API route not found: ${req.method} ${req.originalUrl}`,
+    });
+  });
+
+  // Global error handler for API requests
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (res.headersSent) {
+      return next(err);
+    }
+    console.error('API Server Error:', err);
+    if (req.originalUrl.startsWith('/api/')) {
+      return res.status(500).json({
+        error: err?.message || 'An unexpected server error occurred',
+      });
+    }
+    next(err);
+  });
+
   // Vite middleware for development vs static build in production
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
