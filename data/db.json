@@ -5,7 +5,7 @@
       "username": "admin",
       "email": "admin@smautos.com",
       "role": "admin",
-      "name": "Sardar Manjit Singh",
+      "name": "Balameena",
       "phone": "+91 98765 43210",
       "passwordHash": "$2b$10$dHMv/ZRnA6WgB4JsPwDoRegRkMPCu//Ue4wd/3odw0oVsRRhCac.G",
       "createdAt": "2026-01-01T08:00:00.000Z"
@@ -15,7 +15,7 @@
       "username": "staff",
       "email": "staff@smautos.com",
       "role": "staff",
-      "name": "Rohan Sharma",
+      "name": "Hariharan S",
       "phone": "+91 98111 22334",
       "passwordHash": "$2b$10$dHMv/ZRnA6WgB4JsPwDoReg74adhlkBCPQJgnxJtVKkI4tA7oRZB6",
       "createdAt": "2026-01-15T09:30:00.000Z"
@@ -345,7 +345,7 @@
       "gstRate": 18,
       "discountPercent": 0,
       "openingStock": 30,
-      "currentStock": 22,
+      "currentStock": 21,
       "minStockLevel": 6,
       "unit": "Nos",
       "supplierId": "sup-4",
@@ -353,7 +353,7 @@
       "warrantyPeriod": "12 Months",
       "status": "active",
       "createdAt": "2026-01-10",
-      "updatedAt": "2026-01-10"
+      "updatedAt": "2026-09-15T11:19:20.804Z"
     },
     {
       "id": "prod-12",
@@ -370,7 +370,7 @@
       "gstRate": 18,
       "discountPercent": 0,
       "openingStock": 60,
-      "currentStock": 46,
+      "currentStock": 45,
       "minStockLevel": 15,
       "unit": "Nos",
       "supplierId": "sup-2",
@@ -378,7 +378,7 @@
       "warrantyPeriod": "N/A",
       "status": "active",
       "createdAt": "2026-01-12",
-      "updatedAt": "2026-01-12"
+      "updatedAt": "2026-09-15T11:20:00.029Z"
     },
     {
       "id": "prod-13",
@@ -530,6 +530,100 @@
     }
   ],
   "invoices": [
+    {
+      "id": "inv-1789471200029",
+      "invoiceNumber": "SMA001010",
+      "date": "2026-09-15T11:20:00.029Z",
+      "customerName": "madhu",
+      "customerPhone": "7200887587",
+      "billingAddress": "theni",
+      "shippingAddress": "theni",
+      "isInterState": false,
+      "items": [
+        {
+          "id": "item-1789471200029-0",
+          "productId": "prod-12",
+          "productName": "SM Battery Grade De-mineralized Distilled Water (5 Litres)",
+          "sku": "ACC-DIST-5L",
+          "barcode": "890123400112",
+          "quantity": 1,
+          "unit": "Nos",
+          "rate": 90,
+          "mrp": 90,
+          "discountPercent": 0,
+          "discountAmount": 0,
+          "taxableAmount": 90,
+          "gstRate": 18,
+          "cgstAmount": 8.1,
+          "sgstAmount": 8.1,
+          "igstAmount": 0,
+          "totalAmount": 106.2
+        }
+      ],
+      "subtotal": 90,
+      "overallDiscountType": "fixed",
+      "overallDiscountValue": 0,
+      "overallDiscountAmount": 0,
+      "taxableAmount": 90,
+      "cgstTotal": 8.1,
+      "sgstTotal": 8.1,
+      "igstTotal": 0,
+      "roundOff": -0.2,
+      "grandTotal": 106,
+      "paidAmount": 0,
+      "balanceAmount": 106,
+      "paymentMode": "Cash",
+      "paymentStatus": "Unpaid",
+      "notes": "Warranty: 2026-09-15 to 2027-09-15 | Signatory: SM Autos Authorized Signatory",
+      "createdBy": "Hariharan S",
+      "createdAt": "2026-09-15T11:20:00.029Z"
+    },
+    {
+      "id": "inv-1789471160804",
+      "invoiceNumber": "SMA001009",
+      "date": "2026-09-15T11:19:20.804Z",
+      "customerName": "madhu",
+      "customerPhone": "7200887587",
+      "isInterState": true,
+      "items": [
+        {
+          "id": "item-1789471160804-0",
+          "productId": "prod-11",
+          "productName": "NGK Laser Iridium Spark Plug CPR8EAIX-9",
+          "sku": "SPK-NGK-IRID",
+          "barcode": "890123400111",
+          "quantity": 1,
+          "unit": "Nos",
+          "rate": 690,
+          "mrp": 690,
+          "discountPercent": 0,
+          "discountAmount": 0,
+          "taxableAmount": 690,
+          "gstRate": 18,
+          "cgstAmount": 0,
+          "sgstAmount": 0,
+          "igstAmount": 124.2,
+          "totalAmount": 814.2
+        }
+      ],
+      "subtotal": 690,
+      "overallDiscountType": "fixed",
+      "overallDiscountValue": 0,
+      "overallDiscountAmount": 0,
+      "taxableAmount": 690,
+      "cgstTotal": 0,
+      "sgstTotal": 0,
+      "igstTotal": 124.2,
+      "roundOff": -0.2,
+      "grandTotal": 814,
+      "paidAmount": 0,
+      "balanceAmount": 814,
+      "paymentMode": "Cash",
+      "paymentStatus": "Unpaid",
+      "notes": "Warranty: 2026-09-15 to 2027-09-15 | Signatory: SM Autos Authorized Signatory",
+      "createdBy": "Hariharan S",
+      "createdAt": "2026-09-15T11:19:20.804Z"
+    },
     {
       "id": "inv-1789464528279",
       "invoiceNumber": "SMA001008",
@@ -750,6 +844,34 @@
     }
   ],
   "stockTransactions": [
+    {
+      "id": "stk-1789471200029-prod-12",
+      "productId": "prod-12",
+      "productName": "SM Battery Grade De-mineralized Distilled Water (5 Litres)",
+      "type": "sale",
+      "quantity": -1,
+      "previousStock": 46,
+      "updatedStock": 45,
+      "referenceNo": "SMA001010",
+      "userId": "usr-staff",
+      "userName": "Hariharan S",
+      "remarks": "Sold in Invoice SMA001010",
+      "date": "2026-09-15T11:20:00.029Z"
+    },
+    {
+      "id": "stk-1789471160804-prod-11",
+      "productId": "prod-11",
+      "productName": "NGK Laser Iridium Spark Plug CPR8EAIX-9",
+      "type": "sale",
+      "quantity": -1,
+      "previousStock": 22,
+      "updatedStock": 21,
+      "referenceNo": "SMA001009",
+      "userId": "usr-staff",
+      "userName": "Hariharan S",
+      "remarks": "Sold in Invoice SMA001009",
+      "date": "2026-09-15T11:19:20.804Z"
+    },
     {
       "id": "stk-1789467501834-prod-6",
       "productId": "prod-6",
@@ -1062,7 +1184,7 @@
     "gstin": "33ARQPH7005P1ZE",
     "pan": "ARQPH7005P",
     "invoicePrefix": "SMA",
-    "nextInvoiceNumber": 1009,
+    "nextInvoiceNumber": 1011,
     "termsAndConditions": "1. Goods once sold will be exchanged or returned within 7 days only against valid invoice.\n2. Battery warranty must be registered on manufacturer portal or claimed with original guarantee card.\n3. All electrical items carry manufacturer warranty only.\n4. Subject to Theni jurisdiction only.",
     "bankName": "HDFC Bank Ltd",
     "bankAccount": "50200012345678",
@@ -1073,6 +1195,71 @@
     "maxDiscountPercent": 25
   },
   "auditLogs": [
+    {
+      "id": "log-1789471200029-t7dv",
+      "userId": "usr-staff",
+      "userName": "Hariharan S",
+      "action": "INVOICE_CREATED",
+      "module": "Billing",
+      "recordId": "inv-1789471200029",
+      "details": "Created invoice SMA001010 for madhu (₹106)",
+      "timestamp": "2026-09-15T11:20:00.030Z"
+    },
+    {
+      "id": "log-1789471160804-ypqf",
+      "userId": "usr-staff",
+      "userName": "Hariharan S",
+      "action": "INVOICE_CREATED",
+      "module": "Billing",
+      "recordId": "inv-1789471160804",
+      "details": "Created invoice SMA001009 for madhu (₹814)",
+      "timestamp": "2026-09-15T11:19:20.804Z"
+    },
+    {
+      "id": "log-1789469592584-8qz0",
+      "userId": "usr-staff",
+      "userName": "Hariharan S",
+      "action": "USER_LOGIN",
+      "module": "Auth",
+      "details": "User logged in: staff",
+      "timestamp": "2026-09-15T10:53:12.584Z"
+    },
+    {
+      "id": "log-1789469041803-ijtt",
+      "userId": "usr-admin",
+      "userName": "Sardar Manjit Singh",
+      "action": "USER_UPDATED",
+      "module": "Users",
+      "details": "Updated user admin",
+      "timestamp": "2026-09-15T10:44:01.803Z"
+    },
+    {
+      "id": "log-1789468811182-p0c1",
+      "userId": "usr-admin",
+      "userName": "Sardar Manjit Singh",
+      "action": "USER_LOGIN",
+      "module": "Auth",
+      "details": "User logged in: admin",
+      "timestamp": "2026-09-15T10:40:11.182Z"
+    },
+    {
+      "id": "log-1789468717471-0lqe",
+      "userId": "usr-staff",
+      "userName": "Hariharan S",
+      "action": "USER_LOGIN",
+      "module": "Auth",
+      "details": "User logged in: staff",
+      "timestamp": "2026-09-15T10:38:37.471Z"
+    },
+    {
+      "id": "log-1789468713406-5omv",
+      "userId": "usr-admin",
+      "userName": "Sardar Manjit Singh",
+      "action": "USER_UPDATED",
+      "module": "Users",
+      "details": "Updated user staff",
+      "timestamp": "2026-09-15T10:38:33.406Z"
+    },
     {
       "id": "log-1789467551417-ezl5",
       "userId": "usr-admin",

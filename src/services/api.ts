@@ -108,6 +108,17 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
+  // Users
+  getUsers: () => request<User[]>('/users'),
+  createUser: (data: Partial<User>) => request<User>('/users', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  updateUser: (id: string, data: Partial<User>) => request<User>(`/users/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+  
   // Dashboard
   getDashboard: () => request<DashboardStats>('/dashboard'),
 

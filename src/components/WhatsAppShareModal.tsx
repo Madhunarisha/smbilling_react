@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Send, Copy, Check, MessageSquare } from 'lucide-react';
 import { Invoice } from '../types/index.js';
 import { generateWhatsAppMessage, getWhatsAppShareUrl } from '../utils/formatters.js';
@@ -13,10 +13,16 @@ interface WhatsAppShareModalProps {
 export function WhatsAppShareModal({ isOpen, onClose, invoice }: WhatsAppShareModalProps) {
   const { showToast } = useToast();
   const [copied, setCopied] = useState(false);
+  const [phone, setPhone] = useState('');
+
+  useEffect(() => {
+    if (invoice) {
+      setPhone(invoice.customerPhone || '');
+    }
+  }, [invoice]);
 
   if (!isOpen || !invoice) return null;
 
-  const [phone, setPhone] = useState(invoice.customerPhone || '');
   const message = generateWhatsAppMessage(
     invoice.customerName,
     invoice.invoiceNumber,

@@ -244,16 +244,22 @@ export function LedgersPage({ initialCustomerId, initialSupplierId }: LedgersPag
   const customerTotals = useMemo(() => {
     const totalDebit = filteredCustomerEntries.reduce((acc, curr) => acc + (curr.debit || 0), 0);
     const totalCredit = filteredCustomerEntries.reduce((acc, curr) => acc + (curr.credit || 0), 0);
-    const netOutstanding = selectedCustomer?.currentOutstanding ?? (totalDebit - totalCredit);
-    return { totalDebit, totalCredit, netOutstanding };
+    const closingBalance = filteredCustomerEntries.length > 0
+      ? filteredCustomerEntries[filteredCustomerEntries.length - 1].balance
+      : (selectedCustomer?.currentOutstanding || 0);
+    const openingBalance = closingBalance - totalDebit + totalCredit;
+    return { totalDebit, totalCredit, netOutstanding: closingBalance, openingBalance };
   }, [filteredCustomerEntries, selectedCustomer]);
 
   // Totals for Supplier Ledger
   const supplierTotals = useMemo(() => {
     const totalDebit = filteredSupplierEntries.reduce((acc, curr) => acc + (curr.debit || 0), 0);
     const totalCredit = filteredSupplierEntries.reduce((acc, curr) => acc + (curr.credit || 0), 0);
-    const netPayable = selectedSupplier?.currentPayable ?? (totalCredit - totalDebit);
-    return { totalDebit, totalCredit, netPayable };
+    const closingBalance = filteredSupplierEntries.length > 0
+      ? filteredSupplierEntries[filteredSupplierEntries.length - 1].balance
+      : (selectedSupplier?.currentPayable || 0);
+    const openingBalance = closingBalance - totalCredit + totalDebit;
+    return { totalDebit, totalCredit, netPayable: closingBalance, openingBalance };
   }, [filteredSupplierEntries, selectedSupplier]);
 
   // Handle manual voucher / ledger entry submission
@@ -725,7 +731,20 @@ export function LedgersPage({ initialCustomerId, initialSupplierId }: LedgersPag
                       </td>
                     </tr>
                   ) : (
-                    filteredCustomerEntries.map((entry) => (
+                    <>
+                      {/* Opening Balance Row */}
+                      <tr className="bg-slate-50 border-b border-slate-100">
+                        <td colSpan={6} className="p-3 text-right text-slate-500 font-medium text-xs">
+                          Opening Balance for Statement Period
+                        </td>
+                        <td className="p-3 text-right font-mono font-bold text-slate-600">
+                          {formatINR(customerTotals.openingBalance)}{' '}
+                          <span className="text-[10px] font-normal text-slate-400">
+                            {customerTotals.openingBalance > 0 ? 'Dr' : ''}
+                          </span>
+                        </td>
+                      </tr>
+                      {filteredCustomerEntries.map((entry) => (
                       <tr key={entry.id} className="hover:bg-slate-50/80 transition-colors">
                         <td className="p-3 font-mono text-[11px] text-slate-600 whitespace-nowrap">
                           {formatDate(entry.date)}
@@ -767,7 +786,8 @@ export function LedgersPage({ initialCustomerId, initialSupplierId }: LedgersPag
                           </span>
                         </td>
                       </tr>
-                    ))
+                    ))}
+                    </>
                   )}
                 </tbody>
                 {filteredCustomerEntries.length > 0 && (
@@ -1032,7 +1052,20 @@ export function LedgersPage({ initialCustomerId, initialSupplierId }: LedgersPag
                       </td>
                     </tr>
                   ) : (
-                    filteredSupplierEntries.map((entry) => (
+                    <>
+                      {/* Opening Balance Row */}
+                      <tr className="bg-slate-50 border-b border-slate-100">
+                        <td colSpan={6} className="p-3 text-right text-slate-500 font-medium text-xs">
+                          Opening Balance for Statement Period
+                        </td>
+                        <td className="p-3 text-right font-mono font-bold text-slate-600">
+                          {formatINR(supplierTotals.openingBalance)}{' '}
+                          <span className="text-[10px] font-normal text-slate-400">
+                            {supplierTotals.openingBalance > 0 ? 'Cr' : ''}
+                          </span>
+                        </td>
+                      </tr>
+                      {filteredSupplierEntries.map((entry) => (
                       <tr key={entry.id} className="hover:bg-slate-50/80 transition-colors">
                         <td className="p-3 font-mono text-[11px] text-slate-600 whitespace-nowrap">
                           {formatDate(entry.date)}
@@ -1069,7 +1102,8 @@ export function LedgersPage({ initialCustomerId, initialSupplierId }: LedgersPag
                           {formatINR(entry.balance)}
                         </td>
                       </tr>
-                    ))
+                    ))}
+                    </>
                   )}
                 </tbody>
                 {filteredSupplierEntries.length > 0 && (

@@ -1,17 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Users,
   ShieldCheck,
   Plus,
-  KeyRound,
   CheckCircle2,
   XCircle,
   Edit2,
-  UserCheck,
-  Lock,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.js';
 import { useToast } from '../context/ToastContext.js';
+import { api } from '../services/api.js';
+import { UserModal } from '../components/UserModal.js';
 
 interface UserRecord {
   id: string;
@@ -20,7 +19,8 @@ interface UserRecord {
   email: string;
   role: 'admin' | 'manager' | 'staff';
   status: 'active' | 'inactive';
-  lastLogin: string;
+  lastLogin?: string;
+  createdAt?: string;
 }
 
 export function UserManagement({ initialTab = 'users' }: { initialTab?: 'users' | 'roles' }) {
@@ -28,35 +28,38 @@ export function UserManagement({ initialTab = 'users' }: { initialTab?: 'users' 
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<'users' | 'roles'>(initialTab);
 
-  const [users, setUsers] = useState<UserRecord[]>([
-    {
-      id: 'usr-1',
-      name: 'Sardar Manjit Singh',
-      username: 'admin',
-      email: 'manjit@smautos.com',
-      role: 'admin',
-      status: 'active',
-      lastLogin: '2026-09-13 10:15 AM',
-    },
-    {
-      id: 'usr-2',
-      name: 'Rohan Sharma',
-      username: 'staff',
-      email: 'rohan@smautos.com',
-      role: 'staff',
-      status: 'active',
-      lastLogin: '2026-09-13 09:30 AM',
-    },
-    {
-      id: 'usr-3',
-      name: 'Harpreet Kaur',
-      username: 'harpreet',
-      email: 'accounts@smautos.com',
-      role: 'manager',
-      status: 'active',
-      lastLogin: '2026-09-12 05:40 PM',
-    },
-  ]);
+  const [users, setUsers] = useState<UserRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserRecord | null>(null);
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const data = await api.getUsers();
+      setUsers(data as any[]);
+    } catch (err: any) {
+      showToast(err.message || 'Failed to fetch users', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const handleSaveUser = async (formData: any) => {
+    if (selectedUser) {
+      const updated = await api.updateUser(selectedUser.id, formData);
+      setUsers((prev) => prev.map((u) => (u.id === updated.id ? (updated as any) : u)));
+      showToast('User updated successfully', 'success');
+    } else {
+      const created = await api.createUser(formData);
+      setUsers((prev) => [...prev, created as any]);
+      showToast('User created successfully', 'success');
+    }
+  };
 
   const permissionMatrix = [
     { module: 'GST Invoicing (Create & Print)', admin: true, manager: true, staff: true },
@@ -117,7 +120,10 @@ export function UserManagement({ initialTab = 'users' }: { initialTab?: 'users' 
             <span className="text-xs font-bold text-slate-700">Active System Users</span>
             <button
               type="button"
-              onClick={() => showToast('Add new user modal ready', 'info')}
+              onClick={() => {
+                setSelectedUser(null);
+                setShowModal(true);
+              }}
               className="px-3.5 py-2 bg-[#c81e3a] hover:bg-red-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
             >
               <Plus className="w-4 h-4" />
@@ -134,7 +140,6 @@ export function UserManagement({ initialTab = 'users' }: { initialTab?: 'users' 
                   <th className="py-3 px-3">Email Address</th>
                   <th className="py-3 px-3">Assigned Role</th>
                   <th className="py-3 px-3">Status</th>
-                  <th className="py-3 px-3">Last Active</th>
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
@@ -158,16 +163,22 @@ export function UserManagement({ initialTab = 'users' }: { initialTab?: 'users' 
                       </span>
                     </td>
                     <td className="py-3 px-3">
-                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                        <span>{u.status}</span>
+                      <span className={`inline-flex items-center gap-1 text-[11px] font-bold ${
+                        u.status === 'active' ? 'text-emerald-700' : 'text-red-700'
+                      }`}>
+                        <span className={`w-2 h-2 rounded-full ${
+                          u.status === 'active' ? 'bg-emerald-500' : 'bg-red-500'
+                        }`}></span>
+                        <span className="capitalize">{u.status}</span>
                       </span>
                     </td>
-                    <td className="py-3 px-3 text-slate-500 font-mono text-[11px]">{u.lastLogin}</td>
                     <td className="py-3 px-4 text-right">
                       <button
                         type="button"
-                        onClick={() => showToast(`Edit user details for ${u.name}`, 'info')}
+                        onClick={() => {
+                          setSelectedUser(u);
+                          setShowModal(true);
+                        }}
                         className="p-1 rounded text-slate-500 hover:text-blue-600 hover:bg-slate-100"
                         title="Edit User"
                       >
@@ -176,6 +187,13 @@ export function UserManagement({ initialTab = 'users' }: { initialTab?: 'users' 
                     </td>
                   </tr>
                 ))}
+                {users.length === 0 && !loading && (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center text-slate-500">
+                      No users found.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -236,6 +254,14 @@ export function UserManagement({ initialTab = 'users' }: { initialTab?: 'users' 
             </table>
           </div>
         </div>
+      )}
+
+      {showModal && (
+        <UserModal
+          user={selectedUser}
+          onClose={() => setShowModal(false)}
+          onSave={handleSaveUser}
+        />
       )}
     </div>
   );

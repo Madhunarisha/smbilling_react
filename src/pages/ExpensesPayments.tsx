@@ -81,6 +81,7 @@ export function ExpensesPayments({ initialTab = 'expenses' }: { initialTab?: 'ex
   ]);
 
   const [showAddExpense, setShowAddExpense] = useState(false);
+  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
   const [expCategory, setExpCategory] = useState('Shop Consumables & Freight');
   const [expDesc, setExpDesc] = useState('');
   const [expAmount, setExpAmount] = useState('');
@@ -137,21 +138,42 @@ export function ExpensesPayments({ initialTab = 'expenses' }: { initialTab?: 'ex
       showToast('Please enter a valid expense amount', 'error');
       return;
     }
-    const newExp: ExpenseRecord = {
-      id: `exp-${Date.now()}`,
-      category: expCategory,
-      description: expDesc || expCategory,
-      amount: Number(expAmount),
-      paymentMode: expMode,
-      date: new Date().toISOString().split('T')[0],
-      paidTo: expPaidTo || 'Cash Vendor',
-    };
-    setExpenses((prev) => [newExp, ...prev]);
+
+    if (editingExpenseId) {
+      setExpenses((prev) =>
+        prev.map((exp) =>
+          exp.id === editingExpenseId
+            ? {
+                ...exp,
+                category: expCategory,
+                description: expDesc || expCategory,
+                amount: Number(expAmount),
+                paymentMode: expMode,
+                paidTo: expPaidTo || 'Cash Vendor',
+              }
+            : exp
+        )
+      );
+      showToast('Expense updated successfully', 'success');
+    } else {
+      const newExp: ExpenseRecord = {
+        id: `exp-${Date.now()}`,
+        category: expCategory,
+        description: expDesc || expCategory,
+        amount: Number(expAmount),
+        paymentMode: expMode,
+        date: new Date().toISOString().split('T')[0],
+        paidTo: expPaidTo || 'Cash Vendor',
+      };
+      setExpenses((prev) => [newExp, ...prev]);
+      showToast('Expense recorded successfully', 'success');
+    }
+
     setShowAddExpense(false);
+    setEditingExpenseId(null);
     setExpAmount('');
     setExpDesc('');
     setExpPaidTo('');
-    showToast('Expense recorded successfully', 'success');
   };
 
   const totalExpense = expenses.reduce((acc, e) => acc + e.amount, 0);
@@ -243,7 +265,15 @@ export function ExpensesPayments({ initialTab = 'expenses' }: { initialTab?: 'ex
             <span className="text-xs font-bold text-slate-700">Operating Expenses Log</span>
             <button
               type="button"
-              onClick={() => setShowAddExpense(true)}
+              onClick={() => {
+                setEditingExpenseId(null);
+                setExpCategory('Shop Consumables & Freight');
+                setExpAmount('');
+                setExpDesc('');
+                setExpPaidTo('');
+                setExpMode('Cash');
+                setShowAddExpense(true);
+              }}
               className="px-3.5 py-2 bg-[#c81e3a] hover:bg-red-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
             >
               <Plus className="w-4 h-4" />
@@ -260,7 +290,8 @@ export function ExpensesPayments({ initialTab = 'expenses' }: { initialTab?: 'ex
                   <th className="py-3 px-3">Description</th>
                   <th className="py-3 px-3">Paid To</th>
                   <th className="py-3 px-3">Payment Mode</th>
-                  <th className="py-3 px-4 text-right">Amount</th>
+                  <th className="py-3 px-3 text-right">Amount</th>
+                  <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -275,8 +306,25 @@ export function ExpensesPayments({ initialTab = 'expenses' }: { initialTab?: 'ex
                         {exp.paymentMode}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-right font-mono font-bold text-red-600">
+                    <td className="py-3 px-3 text-right font-mono font-bold text-red-600">
                       {formatINR(exp.amount)}
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingExpenseId(exp.id);
+                          setExpCategory(exp.category);
+                          setExpDesc(exp.description);
+                          setExpAmount(exp.amount.toString());
+                          setExpPaidTo(exp.paidTo);
+                          setExpMode(exp.paymentMode);
+                          setShowAddExpense(true);
+                        }}
+                        className="text-xs font-bold text-blue-600 hover:text-blue-800 underline"
+                      >
+                        Edit
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -354,11 +402,14 @@ export function ExpensesPayments({ initialTab = 'expenses' }: { initialTab?: 'ex
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="font-black text-slate-900 text-sm flex items-center gap-2">
                 <Wallet className="w-4 h-4 text-red-600" />
-                <span>Record Shop Expense</span>
+                <span>{editingExpenseId ? 'Edit Shop Expense' : 'Record Shop Expense'}</span>
               </h3>
               <button
                 type="button"
-                onClick={() => setShowAddExpense(false)}
+                onClick={() => {
+                  setShowAddExpense(false);
+                  setEditingExpenseId(null);
+                }}
                 className="p-1 rounded-lg text-slate-400 hover:text-slate-700"
               >
                 <X className="w-4 h-4" />
@@ -437,7 +488,10 @@ export function ExpensesPayments({ initialTab = 'expenses' }: { initialTab?: 'ex
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowAddExpense(false)}
+                  onClick={() => {
+                    setShowAddExpense(false);
+                    setEditingExpenseId(null);
+                  }}
                   className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg font-bold"
                 >
                   Cancel
@@ -446,7 +500,7 @@ export function ExpensesPayments({ initialTab = 'expenses' }: { initialTab?: 'ex
                   type="submit"
                   className="px-4 py-1.5 bg-[#c81e3a] hover:bg-red-700 text-white rounded-lg font-bold shadow-xs cursor-pointer"
                 >
-                  Save Expense
+                  {editingExpenseId ? 'Update Expense' : 'Save Expense'}
                 </button>
               </div>
             </form>

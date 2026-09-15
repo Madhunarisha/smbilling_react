@@ -246,6 +246,9 @@ function MainApp() {
         onClose={() => setPrintInvoice(null)}
         invoice={printInvoice}
         settings={businessSettings || undefined}
+        onShareWhatsApp={(inv) => {
+          setWhatsAppInvoice(inv);
+        }}
       />
 
       {/* WhatsApp Sharing Dialog */}

@@ -750,7 +750,7 @@ export function AddInvoice({ onInvoiceCreated, onNavigateToList }: AddInvoicePro
   };
 
   // Process standard draft/pending invoice save
-  const handleSaveInvoice = async (mode: 'save') => {
+  const handleSaveInvoice = async (action: 'view' | 'print' | 'whatsapp') => {
     if (!customerName.trim()) {
       showToast('Please enter customer name', 'error');
       return;
@@ -797,7 +797,7 @@ export function AddInvoice({ onInvoiceCreated, onNavigateToList }: AddInvoicePro
         'success'
       );
 
-      onInvoiceCreated(createdInvoice, 'view');
+      onInvoiceCreated(createdInvoice, action);
     } catch (err: any) {
       showToast(err.message || 'Failed to save invoice', 'error');
     } finally {
@@ -1649,27 +1649,48 @@ export function AddInvoice({ onInvoiceCreated, onNavigateToList }: AddInvoicePro
         </div>
 
         {/* Row 9: Bottom Action Buttons */}
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+        <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-200 flex-wrap">
           <button
             type="button"
             onClick={handleCancel}
-            className="px-5 py-2 text-xs sm:text-sm font-bold text-red-600 hover:text-red-700 bg-white hover:bg-red-50 border border-red-500 rounded-lg transition-colors cursor-pointer"
+            className="px-4 py-2 text-xs sm:text-sm font-bold text-red-600 hover:text-red-700 bg-white hover:bg-red-50 border border-red-500 rounded-lg transition-colors cursor-pointer"
           >
             Cancel
+          </button>
+          
+          <div className="flex-1"></div>
+
+          <button
+            type="button"
+            disabled={submitting || items.length === 0}
+            onClick={() => handleSaveInvoice('view')}
+            className="px-4 py-2 text-xs sm:text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
+          >
+            {submitting ? 'Saving...' : 'Save Only'}
           </button>
           <button
             type="button"
             disabled={submitting || items.length === 0}
-            onClick={() => handleSaveInvoice('save')}
-            className="px-6 py-2 text-xs sm:text-sm font-bold text-white bg-[#c81e3a] hover:bg-red-700 rounded-lg shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
+            onClick={() => handleSaveInvoice('whatsapp')}
+            className="px-4 py-2 text-xs sm:text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-xs transition-colors disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
           >
-            {submitting ? 'Saving...' : 'Save'}
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21l1.65-3.8a9 9 0 1 1 3.4 2.9L3 21" /><path d="M9 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0-1 0v1a5 5 0 0 0 5 5h1a.5.5 0 0 0 0-1h-1a.5.5 0 0 0 0 1" /></svg>
+            Save & WhatsApp
+          </button>
+          <button
+            type="button"
+            disabled={submitting || items.length === 0}
+            onClick={() => handleSaveInvoice('print')}
+            className="px-4 py-2 text-xs sm:text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition-colors disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+          >
+            <Printer className="w-4 h-4" />
+            Save & Print
           </button>
           <button
             type="button"
             disabled={submitting || items.length === 0}
             onClick={handleOpenPaymentNowModal}
-            className="px-6 py-2 text-xs sm:text-sm font-bold text-white bg-[#c81e3a] hover:bg-red-700 rounded-lg shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
+            className="px-4 py-2 text-xs sm:text-sm font-bold text-white bg-[#c81e3a] hover:bg-red-700 rounded-lg shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
           >
             Payment Now
           </button>

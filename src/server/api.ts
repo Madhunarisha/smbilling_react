@@ -107,6 +107,84 @@ apiRouter.put('/auth/me/credentials', authenticateToken, (req: AuthenticatedRequ
 });
 
 // -------------------------------------------------------------
+// 1.5 USERS MANAGEMENT
+// -------------------------------------------------------------
+
+apiRouter.get('/users', authenticateToken, requireAdmin, (req: Request, res: Response) => {
+  const db = readDb();
+  // Return users without password hashes
+  const safeUsers = db.users.map(({ passwordHash: _, ...u }) => u);
+  res.json(safeUsers);
+});
+
+apiRouter.post('/users', authenticateToken, requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+  const db = readDb();
+  const { name, username, email, role, status, password } = req.body;
+
+  if (!name || !username || !password) {
+    return res.status(400).json({ error: 'Name, username, and password are required.' });
+  }
+
+  const existing = db.users.find((u) => u.username.toLowerCase() === username.trim().toLowerCase());
+  if (existing) {
+    return res.status(400).json({ error: 'Username is already taken.' });
+  }
+
+  const salt = bcrypt.genSaltSync(10);
+  const newUser = {
+    id: `usr-${Date.now()}`,
+    name: name.trim(),
+    username: username.trim(),
+    email: email?.trim() || '',
+    role: role || 'staff',
+    status: status || 'active',
+    phone: '',
+    createdAt: new Date().toISOString(),
+    passwordHash: bcrypt.hashSync(password, salt),
+  };
+
+  db.users.push(newUser);
+  logAudit(req.user?.id || 'admin', req.user?.name || 'Admin', 'USER_CREATED', 'Users', `Created user ${newUser.username}`);
+  writeDb(db);
+
+  const { passwordHash: _, ...safeUser } = newUser;
+  res.status(201).json(safeUser);
+});
+
+apiRouter.put('/users/:id', authenticateToken, requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+  const db = readDb();
+  const index = db.users.findIndex((u) => u.id === req.params.id);
+  
+  if (index === -1) return res.status(404).json({ error: 'User not found' });
+  
+  const { name, username, email, role, status, password } = req.body;
+  const user = db.users[index];
+
+  if (username && username.trim().toLowerCase() !== user.username.toLowerCase()) {
+    const existing = db.users.find((u) => u.id !== user.id && u.username.toLowerCase() === username.trim().toLowerCase());
+    if (existing) return res.status(400).json({ error: 'Username is already taken.' });
+    user.username = username.trim();
+  }
+
+  if (name) user.name = name.trim();
+  if (email !== undefined) user.email = email.trim();
+  if (role) user.role = role;
+  if (status) user.status = status;
+  
+  if (password && password.trim()) {
+    const salt = bcrypt.genSaltSync(10);
+    user.passwordHash = bcrypt.hashSync(password.trim(), salt);
+  }
+
+  db.users[index] = user;
+  logAudit(req.user?.id || 'admin', req.user?.name || 'Admin', 'USER_UPDATED', 'Users', `Updated user ${user.username}`);
+  writeDb(db);
+
+  const { passwordHash: _, ...safeUser } = user;
+  res.json(safeUser);
+});
+
+// -------------------------------------------------------------
 // 2. DASHBOARD
 // -------------------------------------------------------------
 
@@ -1090,6 +1168,21 @@ apiRouter.delete('/invoices/:id', authenticateToken, requireAdmin, (req: Authent
     const customer = db.customers.find((c) => c.id === invoice.customerId);
     if (customer) {
       customer.currentOutstanding = Math.max(0, (customer.currentOutstanding || 0) - invoice.balanceAmount);
+      
+      // Add reversal ledger entry
+      db.customerLedgers.push({
+        id: `cld-${Date.now()}-rev`,
+        customerId: customer.id,
+        customerName: customer.name,
+        date: new Date().toISOString(),
+        description: `Reversal: Invoice ${invoice.invoiceNumber} Deleted`,
+        type: 'invoice',
+        referenceNo: `VOID-${invoice.invoiceNumber}`,
+        debit: 0,
+        credit: invoice.balanceAmount,
+        balance: customer.currentOutstanding,
+        notes: 'Invoice cancelled/deleted by admin',
+      });
     }
   }
 
@@ -1193,14 +1286,7 @@ apiRouter.get('/ledger/customer/:id', authenticateToken, (req: Request, res: Res
     .filter((e) => e.customerId === req.params.id)
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-  // Compute clean running balance
-  let running = 0;
-  const calculated = entries.map((entry) => {
-    running = running + entry.debit - entry.credit;
-    return { ...entry, balance: running };
-  });
-
-  res.json(calculated);
+  res.json(entries);
 });
 
 apiRouter.get('/ledger/supplier/:id', authenticateToken, (req: Request, res: Response) => {
@@ -1209,13 +1295,7 @@ apiRouter.get('/ledger/supplier/:id', authenticateToken, (req: Request, res: Res
     .filter((e) => e.supplierId === req.params.id)
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-  let running = 0;
-  const calculated = entries.map((entry) => {
-    running = running + entry.credit - entry.debit;
-    return { ...entry, balance: running };
-  });
-
-  res.json(calculated);
+  res.json(entries);
 });
 
 apiRouter.get('/ledger/business', authenticateToken, (req: Request, res: Response) => {

@@ -112,5 +112,6 @@ export function generateWhatsAppMessage(
 export function getWhatsAppShareUrl(phone: string, message: string): string {
   const cleanPhone = phone.replace(/[^0-9]/g, '');
   const formattedPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
-  return `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`;
+  // Use web.whatsapp.com explicitly for desktop browser compatibility
+  return `https://web.whatsapp.com/send?phone=${formattedPhone}&text=${encodeURIComponent(message)}`;
 }
