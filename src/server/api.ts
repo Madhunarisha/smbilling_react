@@ -705,7 +705,7 @@ apiRouter.get('/invoices', authenticateToken, (req: Request, res: Response) => {
     );
   }
 
-  if (status && typeof status === 'string' && status !== 'All') {
+  if (status && typeof status === 'string' && status.toLowerCase() !== 'all') {
     list = list.filter((inv) => inv.paymentStatus === status);
   }
 

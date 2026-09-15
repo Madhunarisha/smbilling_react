@@ -60,245 +60,99 @@ export function InvoicePrintModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 print:p-0 print:bg-white print:static print:inset-auto">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full border border-slate-200 overflow-hidden flex flex-col my-4 print:shadow-none print:border-none print:m-0 print:max-w-none print:w-full">
-        {/* Action Bar (Hidden on Print) */}
-        <div className="bg-slate-900 text-white px-6 py-3.5 flex items-center justify-between print:hidden">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-base">GST Tax Invoice Preview</span>
-            <span className="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-mono">
-              {invoice.invoiceNumber}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 print:p-0 print:bg-white print:static print:inset-auto">
+      <div className="bg-[#f8fafc] rounded-2xl max-w-5xl w-full flex flex-col my-4 print:shadow-none print:m-0 print:max-w-none print:w-full overflow-hidden">
+        
+        {/* Top Header */}
+        <div className="bg-white px-6 py-4 flex items-center justify-between border-b border-slate-200 print:hidden">
+          <h2 className="text-xl font-bold text-slate-900">Invoice Details</h2>
+          <div className="flex gap-3">
             {onShareWhatsApp && (
               <button
                 type="button"
                 onClick={() => onShareWhatsApp(invoice)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm"
               >
-                <Share2 className="w-3.5 h-3.5" />
-                WhatsApp
+                <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 brightness-0 invert" />
+                Send to WhatsApp
               </button>
             )}
-
             <button
               type="button"
               onClick={handlePrint}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-xs transition-colors cursor-pointer"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm cursor-pointer"
             >
-              <Printer className="w-3.5 h-3.5" />
-              Print / Save PDF
+              <Printer className="w-4 h-4" />
+              Print
             </button>
-
             <button
               type="button"
               onClick={onClose}
-              className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+              className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        {/* The Printable Invoice Document */}
-        <div
+        {/* Main Content Area */}
+        <div 
           ref={printRef}
-          className="p-6 sm:p-8 text-slate-800 bg-white font-sans text-xs leading-normal print:p-4 print:text-black"
+          className="p-6 sm:p-8 bg-white print:p-4 font-sans flex flex-col gap-8 shadow-sm m-6 rounded-xl border border-slate-100 print:m-0 print:border-none print:shadow-none"
         >
-          {/* Header */}
-          <div className="border-b-2 border-slate-900 pb-4 mb-4">
-            <div className="flex justify-between items-start">
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-widest text-red-600 block mb-0.5 print:text-black">
-                  Original for Recipient • GST TAX INVOICE
-                </span>
-                <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 uppercase">
-                  {defaultBiz.tradeName || defaultBiz.businessName}
-                </h1>
-                <div className="flex flex-wrap items-center gap-x-2 text-xs text-slate-600 mt-0.5 font-medium">
-                  {defaultBiz.legalName && (
-                    <span>
-                      <strong className="text-slate-800">Proprietor:</strong> {defaultBiz.legalName}
-                    </span>
-                  )}
-                  {defaultBiz.constitution && (
-                    <span className="px-1.5 py-0.2 bg-slate-100 print:bg-transparent border border-slate-300 rounded text-[10px] font-semibold text-slate-700">
-                      {defaultBiz.constitution}
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-slate-600 italic font-medium mt-0.5">{defaultBiz.tagline}</p>
-                <div className="text-xs text-slate-700 mt-1 max-w-lg leading-relaxed">
-                  <p className="font-semibold text-slate-800">
-                    {defaultBiz.address}
-                  </p>
-                  <p>
-                    {defaultBiz.city}
-                    {defaultBiz.district ? `, ${defaultBiz.district} Dist.` : ''}, {defaultBiz.state} - {defaultBiz.pincode}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-slate-700 mt-1">
-                  <span>
-                    <strong>Phone:</strong> {defaultBiz.phone}
-                  </span>
-                  <span>
-                    <strong>Email:</strong> {defaultBiz.email}
-                  </span>
-                </div>
-                <div className="mt-1.5 flex flex-wrap items-center gap-2 sm:gap-3">
-                  <span className="inline-block bg-slate-100 print:bg-transparent px-2 py-0.5 rounded font-mono font-bold text-slate-900 text-xs border border-slate-300">
-                    GSTIN: {defaultBiz.gstin}
-                  </span>
-                  {defaultBiz.pan && (
-                    <span className="inline-block bg-slate-100 print:bg-transparent px-2 py-0.5 rounded font-mono font-bold text-slate-900 text-xs border border-slate-300">
-                      PAN: {defaultBiz.pan}
-                    </span>
-                  )}
-                  <span className="text-xs font-semibold text-slate-700">
-                    State: {defaultBiz.state} (Code: {defaultBiz.stateCode})
-                  </span>
-                </div>
-              </div>
-
-              <div className="text-right border-l-2 border-slate-200 pl-4">
-                <div className="mb-2">
-                  <span className="text-[10px] uppercase font-bold text-slate-500 block">Invoice Number</span>
-                  <span className="text-base sm:text-lg font-black font-mono text-slate-900">
-                    {invoice.invoiceNumber}
-                  </span>
-                </div>
-                <div className="mb-2">
-                  <span className="text-[10px] uppercase font-bold text-slate-500 block">Date of Issue</span>
-                  <span className="font-semibold text-slate-800">{formatDate(invoice.date)}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-slate-500 block">Place of Supply</span>
-                  <span className="font-semibold text-slate-800">
-                    {invoice.isInterState ? 'Inter-State (IGST)' : `${defaultBiz.state} (${defaultBiz.stateCode})`}
-                  </span>
-                </div>
-              </div>
+          {/* Top Section: Logo and Status */}
+          <div className="flex justify-between items-start">
+            <div className="border border-slate-200 p-2 rounded max-w-xs">
+              {/* Placeholder for Logo, using text for now as in requirements */}
+              <h1 className="text-xl font-black text-red-600 leading-tight">
+                {defaultBiz.tradeName || defaultBiz.businessName}
+              </h1>
             </div>
-          </div>
-
-          {/* Billed To & Shipped To */}
-          <div className="grid grid-cols-2 gap-4 border border-slate-300 rounded-lg p-3.5 mb-4 bg-slate-50/50 print:bg-transparent">
             <div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                Details of Receiver / Billed To:
+              <span className={`text-3xl font-bold ${
+                  invoice.paymentStatus === 'Paid' ? 'text-blue-600' :
+                  invoice.paymentStatus === 'Unpaid' ? 'text-red-500' : 'text-amber-500'
+                }`}>
+                {invoice.paymentStatus.toUpperCase()}
               </span>
-              <h4 className="font-bold text-sm text-slate-900">{invoice.customerName}</h4>
-              <p className="text-xs text-slate-700 mt-0.5">
-                <strong>Phone:</strong> {invoice.customerPhone || 'N/A'}
-              </p>
-              {invoice.billingAddress && (
-                <p className="text-xs text-slate-600 mt-0.5 leading-snug">{invoice.billingAddress}</p>
-              )}
-              {invoice.customerGstin && (
-                <p className="text-xs font-mono font-semibold text-slate-800 mt-1">
-                  <strong>Customer GSTIN:</strong> {invoice.customerGstin}
-                </p>
-              )}
-            </div>
-
-            <div className="border-l border-slate-200 pl-4 print:border-slate-300">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                Payment & Billing Details:
-              </span>
-              <div className="space-y-1 text-xs text-slate-700">
-                <p>
-                  <strong>Payment Mode:</strong> <span className="font-semibold">{invoice.paymentMode}</span>
-                </p>
-                <p>
-                  <strong>Payment Status:</strong>{' '}
-                  <span
-                    className={`inline-block px-2 py-0.2 rounded font-bold text-[11px] ${
-                      invoice.paymentStatus === 'Paid'
-                        ? 'text-emerald-700 bg-emerald-100 print:text-black'
-                        : invoice.paymentStatus === 'Partially Paid'
-                        ? 'text-amber-700 bg-amber-100 print:text-black'
-                        : 'text-rose-700 bg-rose-100 print:text-black'
-                    }`}
-                  >
-                    {invoice.paymentStatus}
-                  </span>
-                </p>
-                <p>
-                  <strong>Billed By:</strong> {invoice.createdBy || 'Staff'}
-                </p>
-              </div>
             </div>
           </div>
 
-          {/* Itemized Table */}
-          <div className="border border-slate-300 rounded-lg overflow-hidden mb-4">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead className="bg-slate-100 border-b border-slate-300 font-bold text-slate-800 print:bg-slate-200">
+          {/* Dates & Invoice No Row */}
+          <div className="flex flex-wrap items-center justify-between text-sm text-slate-600 font-medium">
+            <div>Issue Date: <span className="font-semibold text-slate-800">{formatDate(invoice.date)}</span></div>
+            <div>
+              Due Date: <span className="font-semibold text-slate-800">{formatDate(invoice.date)}</span>
+              {invoice.balanceAmount > 0 && <span className="text-red-500 ml-1">(Overdue)</span>}
+            </div>
+            <div>Invoice No: <span className="font-semibold text-slate-800">{invoice.invoiceNumber}</span></div>
+          </div>
+
+          {/* Items Table */}
+          <div className="rounded-lg border border-slate-200 overflow-hidden">
+            <table className="w-full text-left text-sm border-collapse">
+              <thead className="bg-slate-50 border-b border-slate-200 text-slate-700 font-semibold">
                 <tr>
-                  <th className="p-2 w-8 text-center border-r border-slate-300">#</th>
-                  <th className="p-2 border-r border-slate-300">Description of Goods / Parts</th>
-                  <th className="p-2 w-16 text-center border-r border-slate-300">HSN/SKU</th>
-                  <th className="p-2 w-12 text-center border-r border-slate-300">Qty</th>
-                  <th className="p-2 w-16 text-right border-r border-slate-300">Rate (₹)</th>
-                  <th className="p-2 w-14 text-right border-r border-slate-300">Disc</th>
-                  <th className="p-2 w-20 text-right border-r border-slate-300">Taxable (₹)</th>
-                  {invoice.isInterState ? (
-                    <th className="p-2 w-20 text-right border-r border-slate-300">IGST</th>
-                  ) : (
-                    <>
-                      <th className="p-2 w-16 text-right border-r border-slate-300">CGST</th>
-                      <th className="p-2 w-16 text-right border-r border-slate-300">SGST</th>
-                    </>
-                  )}
-                  <th className="p-2 w-20 text-right">Total (₹)</th>
+                  <th className="p-4">Product / Service</th>
+                  <th className="p-4">Unit</th>
+                  <th className="p-4">Quantity</th>
+                  <th className="p-4">Rate</th>
+                  <th className="p-4">Discount</th>
+                  <th className="p-4 text-right">Amount</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200">
+              <tbody className="divide-y divide-slate-100">
                 {invoice.items.map((item, index) => (
-                  <tr key={item.id || index} className="hover:bg-slate-50/50">
-                    <td className="p-2 text-center font-medium text-slate-500 border-r border-slate-200">
-                      {index + 1}
+                  <tr key={item.id || index}>
+                    <td className="p-4 text-slate-600">{item.productName}</td>
+                    <td className="p-4 text-slate-600">{item.unit}</td>
+                    <td className="p-4 text-slate-600">{item.quantity}</td>
+                    <td className="p-4 text-slate-600">{formatINR(item.rate)}</td>
+                    <td className="p-4 text-slate-600">
+                      {item.discountAmount > 0 ? formatINR(item.discountAmount) : '-'}
                     </td>
-                    <td className="p-2 border-r border-slate-200">
-                      <div className="font-semibold text-slate-900">{item.productName}</div>
-                      {item.barcode && (
-                        <div className="text-[10px] text-slate-400 font-mono">Barcode: {item.barcode}</div>
-                      )}
-                    </td>
-                    <td className="p-2 text-center font-mono text-[11px] border-r border-slate-200">{item.sku}</td>
-                    <td className="p-2 text-center font-bold text-slate-900 border-r border-slate-200">
-                      {item.quantity} <span className="text-[10px] font-normal text-slate-500">{item.unit}</span>
-                    </td>
-                    <td className="p-2 text-right font-mono border-r border-slate-200">
-                      {item.rate.toLocaleString('en-IN')}
-                    </td>
-                    <td className="p-2 text-right text-slate-600 border-r border-slate-200">
-                      {item.discountAmount > 0 ? `₹${item.discountAmount}` : '—'}
-                    </td>
-                    <td className="p-2 text-right font-medium text-slate-900 border-r border-slate-200">
-                      {item.taxableAmount.toLocaleString('en-IN')}
-                    </td>
-                    {invoice.isInterState ? (
-                      <td className="p-2 text-right border-r border-slate-200">
-                        <div className="text-[10px] text-slate-500">{item.gstRate}%</div>
-                        <div className="font-mono">₹{item.igstAmount.toFixed(1)}</div>
-                      </td>
-                    ) : (
-                      <>
-                        <td className="p-2 text-right border-r border-slate-200">
-                          <div className="text-[10px] text-slate-500">{item.gstRate / 2}%</div>
-                          <div className="font-mono">₹{item.cgstAmount.toFixed(1)}</div>
-                        </td>
-                        <td className="p-2 text-right border-r border-slate-200">
-                          <div className="text-[10px] text-slate-500">{item.gstRate / 2}%</div>
-                          <div className="font-mono">₹{item.sgstAmount.toFixed(1)}</div>
-                        </td>
-                      </>
-                    )}
-                    <td className="p-2 text-right font-bold text-slate-900">
-                      {item.totalAmount.toLocaleString('en-IN')}
+                    <td className="p-4 text-right font-medium text-slate-800">
+                      {formatINR(item.totalAmount)}
                     </td>
                   </tr>
                 ))}
@@ -306,138 +160,79 @@ export function InvoicePrintModal({
             </table>
           </div>
 
-          {/* Amount In Words & Financial Summary */}
-          <div className="grid grid-cols-12 gap-4 mb-4">
-            {/* Left: Words & Bank details */}
-            <div className="col-span-7 space-y-3">
-              <div className="border border-slate-200 rounded-lg p-2.5 bg-slate-50/50 print:bg-transparent">
-                <span className="text-[10px] uppercase font-bold text-slate-500 block">Amount in Words</span>
-                <p className="font-semibold text-slate-900 italic mt-0.5 text-xs">
-                  {numberToWordsIndian(invoice.grandTotal)}
-                </p>
+          {/* Bottom Section */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-2">
+            {/* Left: Warranty, Notes, Terms */}
+            <div className="space-y-6">
+              <div className="flex gap-3 text-sm">
+                <ShieldCheck className="w-5 h-5 text-slate-400 shrink-0" />
+                <div>
+                  <h4 className="font-bold text-slate-800 mb-1">Warranty Details</h4>
+                  <p className="text-slate-500 mb-0.5">Start Date: <span className="text-slate-600">{new Date().toISOString()}</span></p>
+                  <p className="text-slate-500">End Date / Duration: <span className="text-slate-600">No warranty details provided.</span></p>
+                </div>
               </div>
-
-              <div className="border border-slate-200 rounded-lg p-2.5 bg-slate-50/50 print:bg-transparent text-[11px] leading-relaxed">
-                <span className="text-[10px] uppercase font-bold text-blue-700 block mb-1 print:text-black">
-                  Bank Details for Electronic Transfer (NEFT / RTGS / UPI)
-                </span>
-                <div className="grid grid-cols-2 gap-x-2 text-slate-700">
-                  <p>
-                    <strong>Bank:</strong> {defaultBiz.bankName}
-                  </p>
-                  <p>
-                    <strong>A/C No:</strong> <span className="font-mono">{defaultBiz.bankAccount}</span>
-                  </p>
-                  <p>
-                    <strong>IFSC:</strong> <span className="font-mono">{defaultBiz.ifscCode}</span>
-                  </p>
-                  <p>
-                    <strong>UPI ID:</strong> <span className="font-mono font-bold text-slate-900">{defaultBiz.upiId}</span>
-                  </p>
+              
+              <div className="flex gap-3 text-sm">
+                <div className="w-5 h-5 flex items-center justify-center shrink-0 text-slate-400">
+                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line></svg>
+                </div>
+                <div>
+                  <h4 className="font-bold text-slate-800 mb-1">Notes</h4>
+                  <p className="text-slate-500">{invoice.notes || 'No notes available.'}</p>
                 </div>
               </div>
 
-              <div className="text-[10px] text-slate-500 leading-tight">
-                <span className="font-bold text-slate-700 block mb-0.5">Terms & Conditions:</span>
-                <p className="whitespace-pre-line">{defaultBiz.termsAndConditions}</p>
+              <div className="flex gap-3 text-sm">
+                <div className="w-5 h-5 flex items-center justify-center shrink-0 text-slate-400">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+                </div>
+                <div>
+                  <h4 className="font-bold text-slate-800 mb-1">Terms & Conditions</h4>
+                  <p className="text-slate-500">Standard terms apply.</p>
+                </div>
               </div>
             </div>
 
-            {/* Right: Calculations breakdown */}
-            <div className="col-span-5 border border-slate-300 rounded-lg p-3 bg-slate-50/40 print:bg-transparent text-xs">
-              <div className="space-y-1.5 divide-y divide-slate-200">
-                <div className="flex justify-between py-0.5 text-slate-600">
-                  <span>Gross Subtotal:</span>
-                  <span className="font-mono font-medium">{formatINR(invoice.subtotal)}</span>
-                </div>
-
-                {invoice.overallDiscountAmount > 0 && (
-                  <div className="flex justify-between py-0.5 text-emerald-700">
-                    <span>Overall Discount:</span>
-                    <span className="font-mono font-medium">-{formatINR(invoice.overallDiscountAmount)}</span>
-                  </div>
-                )}
-
-                <div className="flex justify-between py-0.5 font-medium text-slate-800">
-                  <span>Taxable Value:</span>
-                  <span className="font-mono">{formatINR(invoice.taxableAmount)}</span>
-                </div>
-
-                {invoice.isInterState ? (
-                  <div className="flex justify-between py-0.5 text-slate-600">
-                    <span>Total IGST:</span>
-                    <span className="font-mono">{formatINR(invoice.igstTotal)}</span>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex justify-between py-0.5 text-slate-600">
-                      <span>Total CGST:</span>
-                      <span className="font-mono">{formatINR(invoice.cgstTotal)}</span>
-                    </div>
-                    <div className="flex justify-between py-0.5 text-slate-600">
-                      <span>Total SGST:</span>
-                      <span className="font-mono">{formatINR(invoice.sgstTotal)}</span>
-                    </div>
-                  </>
-                )}
-
-                {invoice.roundOff !== 0 && (
-                  <div className="flex justify-between py-0.5 text-slate-500">
-                    <span>Round Off:</span>
-                    <span className="font-mono">
-                      {invoice.roundOff > 0 ? `+₹${invoice.roundOff}` : `-₹${Math.abs(invoice.roundOff)}`}
-                    </span>
-                  </div>
-                )}
-
-                <div className="flex justify-between py-1.5 font-black text-sm text-slate-900 border-t-2 border-slate-900">
-                  <span>GRAND TOTAL:</span>
-                  <span className="font-mono text-base text-blue-950 print:text-black">
-                    {formatINR(invoice.grandTotal)}
-                  </span>
-                </div>
-
-                <div className="flex justify-between py-1 text-slate-700">
-                  <span>Paid Amount:</span>
-                  <span className="font-mono font-bold text-emerald-700 print:text-black">
-                    {formatINR(invoice.paidAmount)}
-                  </span>
-                </div>
-
-                <div className="flex justify-between py-1 text-slate-800 font-bold">
-                  <span>Balance Due:</span>
-                  <span
-                    className={`font-mono ${
-                      invoice.balanceAmount > 0 ? 'text-rose-600 font-black' : 'text-slate-500'
-                    }`}
-                  >
-                    {formatINR(invoice.balanceAmount)}
-                  </span>
-                </div>
+            {/* Right: Totals */}
+            <div className="text-sm">
+              <div className="flex justify-between py-3 border-b border-slate-100">
+                <span className="text-slate-600 font-medium">Amount</span>
+                <span className="font-bold text-slate-900">{formatINR(invoice.subtotal)}</span>
+              </div>
+              <div className="flex justify-between py-3 border-b border-slate-100">
+                <span className="text-slate-600 font-medium">Tax</span>
+                <span className="font-bold text-slate-900">{formatINR(invoice.cgstTotal + invoice.sgstTotal + invoice.igstTotal)}</span>
+              </div>
+              <div className="flex justify-between py-4 mt-2">
+                <span className="font-bold text-slate-900">Total</span>
+                <span className="font-bold text-indigo-900">{formatINR(invoice.grandTotal)}</span>
               </div>
             </div>
           </div>
 
-          {/* Signature & Declaration */}
-          <div className="pt-6 border-t border-slate-300 flex justify-between items-end mt-4">
-            <div className="text-[10px] text-slate-500 max-w-xs leading-relaxed">
-              This is a computer generated tax invoice. Subject to {defaultBiz.district || defaultBiz.city || 'Theni'} jurisdiction only.
-            </div>
-            <div className="text-center">
-              <div className="h-12 border-b border-dashed border-slate-400 w-52 mb-1"></div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-800 block">
-                For {defaultBiz.tradeName || defaultBiz.businessName}
-              </span>
-              <span className="text-[9px] text-slate-600 block">Authorized Signatory / Proprietor</span>
-              {defaultBiz.legalName && (
-                <span className="text-[9px] font-semibold text-slate-700 block">
-                  ({defaultBiz.legalName})
-                </span>
-              )}
-            </div>
+          {/* Action Buttons (Hidden on Print) */}
+          <div className="flex justify-end gap-3 pt-6 print:hidden">
+            <button
+              onClick={onClose}
+              className="px-6 py-2 border border-pink-500 text-pink-600 font-bold text-sm rounded-lg hover:bg-pink-50 transition-colors"
+            >
+              Back
+            </button>
+            <button
+              className="px-6 py-2 bg-[#d82451] hover:bg-[#c01d44] text-white font-bold text-sm rounded-lg transition-colors shadow-sm"
+              onClick={() => {
+                 // The screenshot has Add Payment but logic is not wired in the print modal
+                 // In a full implementation, this might open the PaymentModal or navigate
+                 onClose();
+              }}
+            >
+              Add Payment
+            </button>
           </div>
         </div>
       </div>
     </div>
   );
 }
+
