@@ -65,6 +65,47 @@ apiRouter.get('/auth/me', authenticateToken, (req: AuthenticatedRequest, res: Re
   res.json({ user: safeUser });
 });
 
+apiRouter.put('/auth/me/credentials', authenticateToken, (req: AuthenticatedRequest, res: Response) => {
+  const { currentPassword, newUsername, newPassword } = req.body;
+  if (!currentPassword) {
+    return res.status(400).json({ error: 'Current password is required.' });
+  }
+
+  const db = readDb();
+  const userIndex = db.users.findIndex((u) => u.id === req.user?.id);
+  if (userIndex === -1) {
+    return res.status(404).json({ error: 'User not found.' });
+  }
+  
+  const user = db.users[userIndex];
+  
+  // Verify current password
+  const isValid = bcrypt.compareSync(currentPassword, user.passwordHash);
+  if (!isValid) {
+    return res.status(401).json({ error: 'Incorrect current password.' });
+  }
+
+  // Update credentials
+  if (newUsername && newUsername.trim()) {
+    // Check if new username is already taken by another user
+    const exists = db.users.find(u => u.id !== user.id && u.username.toLowerCase() === newUsername.trim().toLowerCase());
+    if (exists) {
+      return res.status(400).json({ error: 'Username is already taken.' });
+    }
+    db.users[userIndex].username = newUsername.trim();
+  }
+  
+  if (newPassword && newPassword.trim()) {
+    const salt = bcrypt.genSaltSync(10);
+    db.users[userIndex].passwordHash = bcrypt.hashSync(newPassword.trim(), salt);
+  }
+
+  writeDb(db);
+  logAudit(user.id, user.name, 'CREDENTIALS_UPDATE', 'Auth', 'User updated their credentials');
+
+  res.json({ message: 'Credentials updated successfully' });
+});
+
 // -------------------------------------------------------------
 // 2. DASHBOARD
 // -------------------------------------------------------------

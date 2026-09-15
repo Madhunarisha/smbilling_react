@@ -102,6 +102,11 @@ export const api = {
       body: JSON.stringify(credentials),
     }),
   getMe: () => request<{ user: User }>('/auth/me'),
+  updateCredentials: (data: { currentPassword?: string; newUsername?: string; newPassword?: string }) =>
+    request<{ message: string }>('/auth/me/credentials', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
 
   // Dashboard
   getDashboard: () => request<DashboardStats>('/dashboard'),
