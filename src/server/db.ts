@@ -88,7 +88,7 @@ async function initMongo(): Promise<void> {
       connectTimeoutMS: 10000,
     });
     await client.connect();
-    const db = client.db('smbilling');
+    const db = client.db(process.env.MONGODB_DB_NAME || 'SMDB');
     mongoCollection = db.collection('erp_data');
     console.log('[MongoDB] Connected successfully to MongoDB Atlas.');
 
