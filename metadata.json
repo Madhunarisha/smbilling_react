@@ -1,5 +1,5 @@
 {
-  "name": "SM Autos & Batteries - Billing & Inventory Management",
+  "name": "SM Autos & Battery - Billing & Inventory Management",
   "description": "Complete Billing, Inventory, Stock & Ledger Management System for SM Autos & Batteries with dynamic GST invoicing, customer & supplier khata ledgers, audit trail security logs, and business reporting.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

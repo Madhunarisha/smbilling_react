@@ -184,8 +184,7 @@ export function Sidebar({ activePage, onNavigate, isOpen, onClose }: SidebarProp
                 SM AUTOS
               </div>
               <div className="text-[10px] font-bold text-red-600 tracking-widest leading-tight mt-0.5">
-                &amp; BATTERIES
-              </div>
+                &amp; BATTERY              </div>
             </div>
           </div>
 

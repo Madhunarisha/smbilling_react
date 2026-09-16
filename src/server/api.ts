@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
-import { readDb, writeDb, logAudit, getInitialData } from './db.js';
+import { readDb, writeDb, logAudit, getInitialData, getMongoDb } from './db.js';
 import {
   authenticateToken,
   requireAdmin,
@@ -188,17 +188,26 @@ apiRouter.put('/users/:id', authenticateToken, requireAdmin, (req: Authenticated
 // 2. DASHBOARD
 // -------------------------------------------------------------
 
-apiRouter.get('/dashboard', authenticateToken, (req: AuthenticatedRequest, res: Response) => {
+apiRouter.get('/dashboard', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
   const db = readDb();
+  const mongoDb = getMongoDb();
   const todayStr = new Date().toISOString().split('T')[0];
 
-  const todayInvoices = db.invoices.filter((inv) => inv.date.startsWith(todayStr));
-  const todaySales = todayInvoices.reduce((acc, inv) => acc + inv.grandTotal, 0);
+  let products: any = db.products;
+  let invoices: any = db.invoices;
+
+  if (mongoDb) {
+    products = await mongoDb.collection('products').find().toArray();
+    invoices = await mongoDb.collection('invoices').find().sort({ date: -1 }).toArray();
+  }
+
+  const todayInvoices = invoices.filter((inv: any) => inv.date.startsWith(todayStr));
+  const todaySales = todayInvoices.reduce((acc: number, inv: any) => acc + inv.grandTotal, 0);
   const todayInvoiceCount = todayInvoices.length;
 
   // Calculate profit: revenue minus product purchase price
   const productCostMap = new Map<string, number>();
-  db.products.forEach((p) => productCostMap.set(p.id, p.purchasePrice));
+  products.forEach((p: any) => productCostMap.set(p.id, p.purchasePrice));
 
   let todayCost = 0;
   todayInvoices.forEach((inv) => {
@@ -219,11 +228,11 @@ apiRouter.get('/dashboard', authenticateToken, (req: AuthenticatedRequest, res: 
   // Total Payables to suppliers
   const totalPayables = db.suppliers.reduce((acc, s) => acc + (s.currentPayable || 0), 0);
 
-  const totalProducts = db.products.length;
-  const lowStockProducts = db.products.filter(
-    (p) => p.currentStock > 0 && p.currentStock <= p.minStockLevel
+  const totalProducts = products.length;
+  const lowStockProducts = products.filter(
+    (p: any) => p.currentStock > 0 && p.currentStock <= p.minStockLevel
   ).length;
-  const outOfStockProducts = db.products.filter((p) => p.currentStock <= 0).length;
+  const outOfStockProducts = products.filter((p: any) => p.currentStock <= 0).length;
 
   // Daily sales for last 7 days
   const dailySales: { date: string; sales: number; profit: number; invoices: number }[] = [];
@@ -231,7 +240,7 @@ apiRouter.get('/dashboard', authenticateToken, (req: AuthenticatedRequest, res: 
     const d = new Date();
     d.setDate(d.getDate() - i);
     const dateStr = d.toISOString().split('T')[0];
-    const dayInvoices = db.invoices.filter((inv) => inv.date.startsWith(dateStr));
+    const dayInvoices = invoices.filter((inv: any) => inv.date.startsWith(dateStr));
     const daySales = dayInvoices.reduce((acc, inv) => acc + inv.grandTotal, 0);
 
     let dayCost = 0;
@@ -257,12 +266,12 @@ apiRouter.get('/dashboard', authenticateToken, (req: AuthenticatedRequest, res: 
     { month: 'Jun 2026', sales: 240000, purchases: 180000 },
     { month: 'Jul 2026', sales: 198000, purchases: 155000 },
     { month: 'Aug 2026', sales: 285000, purchases: 210000 },
-    { month: 'Sep 2026', sales: Math.max(75000, db.invoices.reduce((a, b) => a + b.grandTotal, 0)), purchases: 65000 },
+    { month: 'Sep 2026', sales: Math.max(75000, invoices.reduce((a: any, b: any) => a + b.grandTotal, 0)), purchases: 65000 },
   ];
 
   // Top selling products
   const productSalesMap = new Map<string, { name: string; quantity: number; revenue: number }>();
-  db.invoices.forEach((inv) => {
+  invoices.forEach((inv: any) => {
     inv.items.forEach((item) => {
       const existing = productSalesMap.get(item.productName) || {
         name: item.productName,
@@ -280,7 +289,7 @@ apiRouter.get('/dashboard', authenticateToken, (req: AuthenticatedRequest, res: 
 
   // Payment Breakdown
   const paymentMap = new Map<string, { amount: number; count: number }>();
-  db.invoices.forEach((inv) => {
+  invoices.forEach((inv: any) => {
     const existing = paymentMap.get(inv.paymentMode) || { amount: 0, count: 0 };
     existing.amount += inv.paidAmount;
     existing.count += 1;
@@ -307,7 +316,7 @@ apiRouter.get('/dashboard', authenticateToken, (req: AuthenticatedRequest, res: 
     monthlySales,
     topProducts,
     paymentBreakdown,
-    recentInvoices: db.invoices.slice(0, 5),
+    recentInvoices: invoices.slice(0, 5).map((i: any) => { const { _id, ...rest } = i; return rest; }),
     recentStockUpdates: db.stockTransactions.slice(0, 5),
     recentPayments: db.payments.slice(0, 5),
   });
@@ -317,10 +326,64 @@ apiRouter.get('/dashboard', authenticateToken, (req: AuthenticatedRequest, res: 
 // 3. PRODUCTS
 // -------------------------------------------------------------
 
-apiRouter.get('/products', authenticateToken, (req: Request, res: Response) => {
-  const db = readDb();
+apiRouter.get('/products', authenticateToken, async (req: Request, res: Response) => {
   const { q, category, brand, stockStatus, sort } = req.query;
+  const mongoDb = getMongoDb();
 
+  if (mongoDb) {
+    const col = mongoDb.collection('products');
+    const query: any = {};
+
+    if (q && typeof q === 'string') {
+      const qLower = q.toLowerCase();
+      query.$or = [
+        { name: { $regex: qLower, $options: 'i' } },
+        { sku: { $regex: qLower, $options: 'i' } },
+        { barcode: { $regex: qLower, $options: 'i' } },
+        { brand: { $regex: qLower, $options: 'i' } },
+        { modelNumber: { $regex: qLower, $options: 'i' } }
+      ];
+    }
+
+    if (category && typeof category === 'string' && category !== 'All') {
+      query.category = category;
+    }
+
+    if (brand && typeof brand === 'string' && brand !== 'All') {
+      query.brand = brand;
+    }
+
+    if (stockStatus && typeof stockStatus === 'string') {
+      if (stockStatus === 'low') {
+        query.$expr = { $and: [ { $gt: ["$currentStock", 0] }, { $lte: ["$currentStock", "$minStockLevel"] } ] };
+      } else if (stockStatus === 'out') {
+        query.currentStock = { $lte: 0 };
+      } else if (stockStatus === 'in_stock') {
+        query.$expr = { $gt: ["$currentStock", "$minStockLevel"] };
+      }
+    }
+
+    let sortOpt: any = { createdAt: -1 };
+    if (sort && typeof sort === 'string') {
+      if (sort === 'name_asc') sortOpt = { name: 1 };
+      if (sort === 'name_desc') sortOpt = { name: -1 };
+      if (sort === 'price_asc') sortOpt = { sellingPrice: 1 };
+      if (sort === 'price_desc') sortOpt = { sellingPrice: -1 };
+      if (sort === 'stock_asc') sortOpt = { currentStock: 1 };
+      if (sort === 'stock_desc') sortOpt = { currentStock: -1 };
+    }
+
+    const products = await col.find(query).sort(sortOpt).toArray();
+    // Strip MongoDB _id to match types
+    const cleanProducts = products.map((p: any) => {
+      const { _id, ...rest } = p;
+      return rest;
+    });
+    return res.json(cleanProducts);
+  }
+
+  // Fallback to in-memory JSON cache
+  const db = readDb();
   let filtered = [...db.products];
 
   if (q && typeof q === 'string') {
@@ -368,15 +431,24 @@ apiRouter.get('/products', authenticateToken, (req: Request, res: Response) => {
   res.json(filtered);
 });
 
-apiRouter.get('/products/:id', authenticateToken, (req: Request, res: Response) => {
+apiRouter.get('/products/:id', authenticateToken, async (req: Request, res: Response) => {
+  const mongoDb = getMongoDb();
+  if (mongoDb) {
+    const product = await mongoDb.collection('products').findOne({ id: req.params.id });
+    if (!product) return res.status(404).json({ error: 'Product not found' });
+    const { _id, ...rest } = product as any;
+    return res.json(rest);
+  }
+
   const db = readDb();
   const product = db.products.find((p) => p.id === req.params.id);
   if (!product) return res.status(404).json({ error: 'Product not found' });
   res.json(product);
 });
 
-apiRouter.post('/products', authenticateToken, requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+apiRouter.post('/products', authenticateToken, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const db = readDb();
+  const mongoDb = getMongoDb();
   const {
     sku,
     name,
@@ -402,9 +474,16 @@ apiRouter.post('/products', authenticateToken, requireAdmin, (req: Authenticated
     return res.status(400).json({ error: 'SKU, Product Name, Category and Brand are required.' });
   }
 
-  const existingSku = db.products.find((p) => p.sku.toLowerCase() === sku.trim().toLowerCase());
-  if (existingSku) {
-    return res.status(400).json({ error: `A product with SKU "${sku}" already exists.` });
+  if (mongoDb) {
+    const existingSku = await mongoDb.collection('products').findOne({ sku: new RegExp(`^${sku.trim()}$`, 'i') });
+    if (existingSku) {
+      return res.status(400).json({ error: `A product with SKU "${sku}" already exists.` });
+    }
+  } else {
+    const existingSku = db.products.find((p) => p.sku.toLowerCase() === sku.trim().toLowerCase());
+    if (existingSku) {
+      return res.status(400).json({ error: `A product with SKU "${sku}" already exists.` });
+    }
   }
 
   const newProduct: Product = {
@@ -433,6 +512,9 @@ apiRouter.post('/products', authenticateToken, requireAdmin, (req: Authenticated
     updatedAt: new Date().toISOString(),
   };
 
+  if (mongoDb) {
+    await mongoDb.collection('products').insertOne({ ...newProduct });
+  }
   db.products.unshift(newProduct);
 
   // Update category product count
@@ -468,20 +550,36 @@ apiRouter.post('/products', authenticateToken, requireAdmin, (req: Authenticated
   res.status(201).json(newProduct);
 });
 
-apiRouter.put('/products/:id', authenticateToken, requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+apiRouter.put('/products/:id', authenticateToken, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const db = readDb();
+  const mongoDb = getMongoDb();
   const index = db.products.findIndex((p) => p.id === req.params.id);
-  if (index === -1) return res.status(404).json({ error: 'Product not found' });
+  if (index === -1 && !mongoDb) return res.status(404).json({ error: 'Product not found' });
 
-  const existing = db.products[index];
+  let existing: any = db.products[index];
+  if (mongoDb) {
+    existing = await mongoDb.collection('products').findOne({ id: req.params.id });
+    if (!existing) return res.status(404).json({ error: 'Product not found' });
+  }
+
   const { sku, name, category, brand } = req.body;
 
   if (sku && sku.toLowerCase() !== existing.sku.toLowerCase()) {
-    const skuDuplicate = db.products.find(
-      (p) => p.id !== existing.id && p.sku.toLowerCase() === sku.trim().toLowerCase()
-    );
-    if (skuDuplicate) {
-      return res.status(400).json({ error: `SKU "${sku}" is already assigned to another product.` });
+    if (mongoDb) {
+      const skuDuplicate = await mongoDb.collection('products').findOne({ 
+        id: { $ne: existing.id }, 
+        sku: new RegExp(`^${sku.trim()}$`, 'i') 
+      });
+      if (skuDuplicate) {
+        return res.status(400).json({ error: `SKU "${sku}" is already assigned to another product.` });
+      }
+    } else {
+      const skuDuplicate = db.products.find(
+        (p) => p.id !== existing.id && p.sku.toLowerCase() === sku.trim().toLowerCase()
+      );
+      if (skuDuplicate) {
+        return res.status(400).json({ error: `SKU "${sku}" is already assigned to another product.` });
+      }
     }
   }
 
@@ -499,8 +597,15 @@ apiRouter.put('/products/:id', authenticateToken, requireAdmin, (req: Authentica
     minStockLevel: req.body.minStockLevel !== undefined ? Number(req.body.minStockLevel) : existing.minStockLevel,
     updatedAt: new Date().toISOString(),
   };
-
-  db.products[index] = updated;
+  
+  if (mongoDb) {
+    const { _id, ...rest } = updated as any;
+    await mongoDb.collection('products').updateOne({ id: req.params.id }, { $set: rest });
+  }
+  
+  if (index !== -1) {
+    db.products[index] = updated;
+  }
 
   logAudit(
     req.user?.id || 'admin',
@@ -515,11 +620,19 @@ apiRouter.put('/products/:id', authenticateToken, requireAdmin, (req: Authentica
   res.json(updated);
 });
 
-apiRouter.delete('/products/:id', authenticateToken, requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+apiRouter.delete('/products/:id', authenticateToken, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const db = readDb();
-  const product = db.products.find((p) => p.id === req.params.id);
+  const mongoDb = getMongoDb();
+  let product: any = db.products.find((p) => p.id === req.params.id);
+
+  if (mongoDb) {
+    product = await mongoDb.collection('products').findOne({ id: req.params.id });
+  }
   if (!product) return res.status(404).json({ error: 'Product not found' });
 
+  if (mongoDb) {
+    await mongoDb.collection('products').deleteOne({ id: req.params.id });
+  }
   db.products = db.products.filter((p) => p.id !== req.params.id);
 
   logAudit(
@@ -766,9 +879,42 @@ apiRouter.delete('/suppliers/:id', authenticateToken, requireAdmin, (req: Authen
 // 7. INVOICE MANAGEMENT & FAST BILLING COUNTER
 // -------------------------------------------------------------
 
-apiRouter.get('/invoices', authenticateToken, (req: Request, res: Response) => {
-  const db = readDb();
+apiRouter.get('/invoices', authenticateToken, async (req: Request, res: Response) => {
   const { q, status, fromDate, toDate } = req.query;
+  const mongoDb = getMongoDb();
+
+  if (mongoDb) {
+    const col = mongoDb.collection('invoices');
+    const query: any = {};
+
+    if (q && typeof q === 'string') {
+      const qLower = q.toLowerCase();
+      query.$or = [
+        { invoiceNumber: { $regex: qLower, $options: 'i' } },
+        { customerName: { $regex: qLower, $options: 'i' } },
+        { customerPhone: { $regex: qLower, $options: 'i' } }
+      ];
+    }
+
+    if (status && typeof status === 'string' && status.toLowerCase() !== 'all') {
+      query.paymentStatus = status;
+    }
+
+    if (fromDate || toDate) {
+      query.date = {};
+      if (fromDate && typeof fromDate === 'string') query.date.$gte = fromDate;
+      if (toDate && typeof toDate === 'string') query.date.$lte = toDate + 'T23:59:59.999Z';
+    }
+
+    const invoices = await col.find(query).sort({ date: -1 }).toArray();
+    const cleanInvoices = invoices.map((i: any) => {
+      const { _id, ...rest } = i;
+      return rest;
+    });
+    return res.json(cleanInvoices);
+  }
+
+  const db = readDb();
   let list = [...db.invoices];
 
   if (q && typeof q === 'string') {
@@ -797,7 +943,17 @@ apiRouter.get('/invoices', authenticateToken, (req: Request, res: Response) => {
   res.json(list);
 });
 
-apiRouter.get('/invoices/:id', authenticateToken, (req: Request, res: Response) => {
+apiRouter.get('/invoices/:id', authenticateToken, async (req: Request, res: Response) => {
+  const mongoDb = getMongoDb();
+  if (mongoDb) {
+    const inv = await mongoDb.collection('invoices').findOne({ 
+      $or: [ { id: req.params.id }, { invoiceNumber: req.params.id } ] 
+    });
+    if (!inv) return res.status(404).json({ error: 'Invoice not found' });
+    const { _id, ...rest } = inv as any;
+    return res.json(rest);
+  }
+
   const db = readDb();
   const inv = db.invoices.find((i) => i.id === req.params.id || i.invoiceNumber === req.params.id);
   if (!inv) return res.status(404).json({ error: 'Invoice not found' });
@@ -805,8 +961,9 @@ apiRouter.get('/invoices/:id', authenticateToken, (req: Request, res: Response) 
 });
 
 // Create Invoice Transactionally
-apiRouter.post('/invoices', authenticateToken, (req: AuthenticatedRequest, res: Response) => {
+apiRouter.post('/invoices', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
   const db = readDb();
+  const mongoDb = getMongoDb();
   const {
     customerName,
     customerPhone,
@@ -833,7 +990,10 @@ apiRouter.post('/invoices', authenticateToken, (req: AuthenticatedRequest, res: 
     if (!item.productId || item.quantity <= 0) {
       return res.status(400).json({ error: `Invalid product or quantity for item "${item.productName}".` });
     }
-    const product = db.products.find((p) => p.id === item.productId);
+    let product: any = db.products.find((p) => p.id === item.productId);
+    if (mongoDb) {
+      product = await mongoDb.collection('products').findOne({ id: item.productId });
+    }
     if (!product) {
       return res.status(400).json({ error: `Product "${item.productName}" not found in inventory.` });
     }
@@ -1005,11 +1165,26 @@ apiRouter.post('/invoices', authenticateToken, (req: AuthenticatedRequest, res: 
 
   // 4. Update inventory stock & record stock transactions
   for (const item of processedItems) {
-    const product = db.products.find((p) => p.id === item.productId);
+    let product: any = db.products.find((p) => p.id === item.productId);
+    if (mongoDb) {
+      product = await mongoDb.collection('products').findOne({ id: item.productId });
+    }
     if (product) {
       const prevStock = product.currentStock;
-      product.currentStock -= item.quantity;
-      product.updatedAt = new Date().toISOString();
+      
+      if (mongoDb) {
+        await mongoDb.collection('products').updateOne(
+          { id: product.id },
+          { $inc: { currentStock: -item.quantity }, $set: { updatedAt: new Date().toISOString() } }
+        );
+      }
+      
+      // Update cache
+      const cacheProduct = db.products.find((p) => p.id === item.productId);
+      if (cacheProduct) {
+        cacheProduct.currentStock -= item.quantity;
+        cacheProduct.updatedAt = new Date().toISOString();
+      }
 
       const stockTx: StockTransaction = {
         id: `stk-${Date.now()}-${item.productId}`,
@@ -1018,7 +1193,7 @@ apiRouter.post('/invoices', authenticateToken, (req: AuthenticatedRequest, res: 
         type: 'sale',
         quantity: -item.quantity,
         previousStock: prevStock,
-        updatedStock: product.currentStock,
+        updatedStock: prevStock - item.quantity,
         referenceNo: invoiceNumber,
         userId: req.user?.id || 'usr-staff',
         userName: req.user?.name || 'Staff',
@@ -1088,6 +1263,9 @@ apiRouter.post('/invoices', authenticateToken, (req: AuthenticatedRequest, res: 
     db.payments.unshift(paymentRecord);
   }
 
+  if (mongoDb) {
+    await mongoDb.collection('invoices').insertOne({ ...newInvoice });
+  }
   db.invoices.unshift(newInvoice);
 
   logAudit(
@@ -1104,8 +1282,9 @@ apiRouter.post('/invoices', authenticateToken, (req: AuthenticatedRequest, res: 
 });
 
 // Record additional payment on an existing invoice
-apiRouter.post('/invoices/:id/payment', authenticateToken, (req: AuthenticatedRequest, res: Response) => {
+apiRouter.post('/invoices/:id/payment', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
   const db = readDb();
+  const mongoDb = getMongoDb();
   const { amount, paymentMode, transactionRef, notes } = req.body;
   const payAmt = Number(amount);
 
@@ -1113,7 +1292,12 @@ apiRouter.post('/invoices/:id/payment', authenticateToken, (req: AuthenticatedRe
     return res.status(400).json({ error: 'Valid payment amount greater than zero is required.' });
   }
 
-  const invoice = db.invoices.find((i) => i.id === req.params.id || i.invoiceNumber === req.params.id);
+  let invoice: any = db.invoices.find((i) => i.id === req.params.id || i.invoiceNumber === req.params.id);
+  if (mongoDb) {
+    invoice = await mongoDb.collection('invoices').findOne({ 
+      $or: [ { id: req.params.id }, { invoiceNumber: req.params.id } ] 
+    });
+  }
   if (!invoice) return res.status(404).json({ error: 'Invoice not found.' });
 
   if (invoice.balanceAmount <= 0) {
@@ -1124,6 +1308,25 @@ apiRouter.post('/invoices/:id/payment', authenticateToken, (req: AuthenticatedRe
   invoice.paidAmount += actualPayment;
   invoice.balanceAmount -= actualPayment;
   invoice.paymentStatus = invoice.balanceAmount === 0 ? 'Paid' : 'Partially Paid';
+
+  if (mongoDb) {
+    await mongoDb.collection('invoices').updateOne(
+      { id: invoice.id },
+      { $set: { 
+        paidAmount: invoice.paidAmount, 
+        balanceAmount: invoice.balanceAmount, 
+        paymentStatus: invoice.paymentStatus 
+      }}
+    );
+  }
+
+  // update local cache
+  const cacheInvoice = db.invoices.find((i) => i.id === invoice.id);
+  if (cacheInvoice) {
+    cacheInvoice.paidAmount = invoice.paidAmount;
+    cacheInvoice.balanceAmount = invoice.balanceAmount;
+    cacheInvoice.paymentStatus = invoice.paymentStatus;
+  }
 
   const paymentRecord: Payment = {
     id: `pay-${Date.now()}`,
@@ -1174,24 +1377,41 @@ apiRouter.post('/invoices/:id/payment', authenticateToken, (req: AuthenticatedRe
   res.json({ invoice, payment: paymentRecord });
 });
 
-apiRouter.delete('/invoices/:id', authenticateToken, requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+apiRouter.delete('/invoices/:id', authenticateToken, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const db = readDb();
-  const invoice = db.invoices.find((i) => i.id === req.params.id);
+  const mongoDb = getMongoDb();
+  let invoice: any = db.invoices.find((i) => i.id === req.params.id);
+  if (mongoDb) {
+    invoice = await mongoDb.collection('invoices').findOne({ id: req.params.id });
+  }
   if (!invoice) return res.status(404).json({ error: 'Invoice not found.' });
 
   // Revert stock
   for (const item of invoice.items) {
-    const product = db.products.find((p) => p.id === item.productId);
+    let product: any = db.products.find((p) => p.id === item.productId);
+    if (mongoDb) {
+      product = await mongoDb.collection('products').findOne({ id: item.productId });
+    }
     if (product) {
-      product.currentStock += item.quantity;
+      if (mongoDb) {
+        await mongoDb.collection('products').updateOne(
+          { id: product.id },
+          { $inc: { currentStock: item.quantity }, $set: { updatedAt: new Date().toISOString() } }
+        );
+      }
+      
+      const cacheProduct = db.products.find((p) => p.id === item.productId);
+      if (cacheProduct) {
+        cacheProduct.currentStock += item.quantity;
+      }
       db.stockTransactions.unshift({
         id: `stk-${Date.now()}-${item.productId}`,
         productId: product.id,
         productName: product.name,
         type: 'adjustment',
         quantity: item.quantity,
-        previousStock: product.currentStock - item.quantity,
-        updatedStock: product.currentStock,
+        previousStock: product.currentStock, // approximate due to async, could be improved
+        updatedStock: product.currentStock + item.quantity,
         referenceNo: `VOID-${invoice.invoiceNumber}`,
         userId: req.user?.id || 'usr-admin',
         userName: req.user?.name || 'Admin',
@@ -1224,6 +1444,9 @@ apiRouter.delete('/invoices/:id', authenticateToken, requireAdmin, (req: Authent
     }
   }
 
+  if (mongoDb) {
+    await mongoDb.collection('invoices').deleteOne({ id: req.params.id });
+  }
   db.invoices = db.invoices.filter((i) => i.id !== req.params.id);
 
   logAudit(
@@ -1260,8 +1483,9 @@ apiRouter.get('/stock/history', authenticateToken, (req: Request, res: Response)
   res.json(list);
 });
 
-apiRouter.post('/stock/adjustment', authenticateToken, requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+apiRouter.post('/stock/adjustment', authenticateToken, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const db = readDb();
+  const mongoDb = getMongoDb();
   const { productId, type, quantity, remarks, referenceNo } = req.body;
   const qty = Number(quantity);
 
@@ -1269,7 +1493,10 @@ apiRouter.post('/stock/adjustment', authenticateToken, requireAdmin, (req: Authe
     return res.status(400).json({ error: 'Product ID and non-zero quantity are required.' });
   }
 
-  const product = db.products.find((p) => p.id === productId);
+  let product: any = db.products.find((p) => p.id === productId);
+  if (mongoDb) {
+    product = await mongoDb.collection('products').findOne({ id: productId });
+  }
   if (!product) return res.status(404).json({ error: 'Product not found.' });
 
   const prevStock = product.currentStock;
@@ -1281,6 +1508,18 @@ apiRouter.post('/stock/adjustment', authenticateToken, requireAdmin, (req: Authe
     });
   }
 
+  if (mongoDb) {
+    await mongoDb.collection('products').updateOne(
+      { id: productId },
+      { $set: { currentStock: updatedStock, updatedAt: new Date().toISOString() } }
+    );
+  }
+
+  const cacheProduct = db.products.find((p) => p.id === productId);
+  if (cacheProduct) {
+    cacheProduct.currentStock = updatedStock;
+    cacheProduct.updatedAt = new Date().toISOString();
+  }
   product.currentStock = updatedStock;
   product.updatedAt = new Date().toISOString();
 

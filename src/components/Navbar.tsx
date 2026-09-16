@@ -74,7 +74,7 @@ export function Navbar({ onToggleSidebar, onNavigateToPos, onNavigateToStock }: 
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-extrabold text-sm sm:text-base tracking-tight text-slate-900 flex items-center gap-1">
-                  SM AUTOS <span className="text-[#c81e3a]">&amp; BATTERIES</span>
+                  SM AUTOS <span className="text-[#c81e3a]">&amp; BATTERY</span>
                 </span>
                 <span className="hidden md:inline-block text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-red-50 text-red-700 border border-red-200">
                   GST Billing

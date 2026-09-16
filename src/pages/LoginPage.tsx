@@ -155,7 +155,7 @@ export function LoginPage() {
 
         {/* Footer info */}
         <p className="text-center text-xs text-slate-500 mt-6">
-          © 2026 SM Autos &amp; Batteries. GST Registered Automotive Spares Dealer.
+          © 2026 SM Autos &amp; Battery. GST Registered Automotive Spares Dealer.
         </p>
       </div>
     </div>

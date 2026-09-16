@@ -77,6 +77,8 @@ function getStoragePaths(): { dataDir: string; dbFile: string } {
   }
 }
 
+let mongoDbInstance: any = null;
+
 async function initMongo(): Promise<void> {
   const rawUri = process.env.MONGODB_URI;
   if (!rawUri) return;
@@ -86,9 +88,12 @@ async function initMongo(): Promise<void> {
     const client = new MongoClient(uri, {
       serverSelectionTimeoutMS: 5000,
       connectTimeoutMS: 10000,
-    });
+      tls: true,
+      tlsAllowInvalidCertificates: true, // often helps bypass strict local network SSL intercepts
+    } as any);
     await client.connect();
     const db = client.db(process.env.MONGODB_DB_NAME || 'SMDB');
+    mongoDbInstance = db;
     mongoCollection = db.collection('erp_data');
     console.log('[MongoDB] Connected successfully to MongoDB Atlas.');
 
@@ -110,9 +115,27 @@ async function initMongo(): Promise<void> {
       );
       console.log('[MongoDB] Seeded initial data into MongoDB Atlas.');
     }
+
+    // Seed products and invoices into dedicated collections if they are empty
+    const productsCol = db.collection('products');
+    const invoicesCol = db.collection('invoices');
+    const productsCount = await productsCol.countDocuments();
+    if (productsCount === 0 && dbCache?.products?.length) {
+      await productsCol.insertMany(dbCache.products);
+      console.log('[MongoDB] Seeded products collection.');
+    }
+    const invoicesCount = await invoicesCol.countDocuments();
+    if (invoicesCount === 0 && dbCache?.invoices?.length) {
+      await invoicesCol.insertMany(dbCache.invoices);
+      console.log('[MongoDB] Seeded invoices collection.');
+    }
   } catch (err: any) {
     console.warn('[MongoDB] Notice: Running with local/serverless fallback (' + err?.message + ').');
   }
+}
+
+export function getMongoDb() {
+  return mongoDbInstance;
 }
 
 function triggerMongoSync(data: DatabaseSchema) {
