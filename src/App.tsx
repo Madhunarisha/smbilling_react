@@ -251,6 +251,21 @@ function MainApp() {
         onShareWhatsApp={(inv) => {
           setWhatsAppInvoice(inv);
         }}
+        onAddPayment={(inv) => {
+          setPrintInvoice(null);
+          setPaymentInvoice(inv);
+        }}
+      />
+
+      {/* Global Payment Modal */}
+      <PaymentModal
+        isOpen={Boolean(paymentInvoice)}
+        onClose={() => setPaymentInvoice(null)}
+        invoice={paymentInvoice}
+        onSavePayment={async (invoiceId, paymentData) => {
+          await api.recordPayment(invoiceId, paymentData);
+          showToast(`Payment recorded successfully!`, 'success');
+        }}
       />
 
       {/* WhatsApp Sharing Dialog */}

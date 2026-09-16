@@ -26,7 +26,7 @@
       "id": "cat-1",
       "name": "Car Batteries",
       "description": "Lead-acid & AGM batteries for hatchbacks, sedans, SUVs",
-      "productCount": 4,
+      "productCount": 5,
       "createdAt": "2026-01-01"
     },
     {
@@ -80,6 +80,31 @@
     }
   ],
   "products": [
+    {
+      "id": "prod-1789540521121",
+      "sku": "BAT-2140",
+      "name": "Exide Milege",
+      "category": "Car Batteries",
+      "brand": "EXide",
+      "modelNumber": "DIN55",
+      "barcode": "890526027506",
+      "description": "",
+      "purchasePrice": 8000,
+      "sellingPrice": 9500,
+      "mrp": 10000,
+      "gstRate": 18,
+      "discountPercent": 0,
+      "openingStock": 10,
+      "currentStock": 19,
+      "minStockLevel": 5,
+      "unit": "Nos",
+      "supplierId": "sup-1",
+      "supplierName": "Exide Industries Ltd - Regional Depot",
+      "warrantyPeriod": "72 Months",
+      "status": "active",
+      "createdAt": "2026-09-16T06:35:21.121Z",
+      "updatedAt": "2026-09-16T06:40:29.414Z"
+    },
     {
       "id": "prod-1",
       "sku": "BAT-EX-MI45L",
@@ -281,31 +306,6 @@
       "updatedAt": "2026-01-10"
     },
     {
-      "id": "prod-9",
-      "sku": "FLT-BOS-AIR-HY",
-      "name": "Bosch Engine Air Filter for Hyundai Creta / Seltos",
-      "category": "Filters & Spark Plugs",
-      "brand": "Bosch",
-      "modelNumber": "AF-CRETA-01",
-      "barcode": "890123400109",
-      "description": "Micro-fibre high-capacity air filtration element for optimal airflow and engine protection.",
-      "purchasePrice": 280,
-      "sellingPrice": 420,
-      "mrp": 550,
-      "gstRate": 18,
-      "discountPercent": 0,
-      "openingStock": 20,
-      "currentStock": 3,
-      "minStockLevel": 5,
-      "unit": "Nos",
-      "supplierId": "sup-4",
-      "supplierName": "Bosch Automotive Aftermarket Spares",
-      "warrantyPeriod": "N/A",
-      "status": "active",
-      "createdAt": "2026-01-10",
-      "updatedAt": "2026-01-10"
-    },
-    {
       "id": "prod-10",
       "sku": "ELC-ROO-WND",
       "name": "Roots Windtone Sonic Dual Horn Set (12V)",
@@ -407,6 +407,20 @@
     }
   ],
   "customers": [
+    {
+      "id": "cust-1789540593426",
+      "name": "Hariharan S",
+      "phone": "08069496647",
+      "email": "",
+      "address": "No.163\nMain Road, Cumbum",
+      "gstin": "",
+      "type": "retail",
+      "totalSales": 0,
+      "currentOutstanding": 0,
+      "status": "active",
+      "createdAt": "2026-09-16T06:36:33.426Z",
+      "updatedAt": "2026-09-16T06:36:33.426Z"
+    },
     {
       "id": "cust-1",
       "name": "Verma Motors & Multi-Brand Workshop",
@@ -531,6 +545,56 @@
   ],
   "invoices": [
     {
+      "id": "inv-1789540593426",
+      "invoiceNumber": "1012",
+      "date": "2026-09-16T06:36:33.426Z",
+      "customerId": "cust-1789540593426",
+      "customerName": "Hariharan S",
+      "customerPhone": "08069496647",
+      "billingAddress": "No.163\nMain Road, Cumbum",
+      "shippingAddress": "No.163\nMain Road, Cumbum",
+      "isInterState": false,
+      "gstType": "inclusive",
+      "items": [
+        {
+          "id": "item-1789540593426-0",
+          "productId": "prod-1789540521121",
+          "productName": "Exide Milege",
+          "sku": "BAT-2140",
+          "barcode": "890526027506",
+          "quantity": 1,
+          "unit": "Nos",
+          "rate": 9500,
+          "mrp": 9500,
+          "discountPercent": 0,
+          "discountAmount": 0,
+          "taxableAmount": 8050.85,
+          "gstRate": 18,
+          "cgstAmount": 724.58,
+          "sgstAmount": 724.58,
+          "igstAmount": 0,
+          "totalAmount": 9500
+        }
+      ],
+      "subtotal": 9500,
+      "overallDiscountType": "fixed",
+      "overallDiscountValue": 0,
+      "overallDiscountAmount": 0,
+      "taxableAmount": 8050.85,
+      "cgstTotal": 724.58,
+      "sgstTotal": 724.58,
+      "igstTotal": 0,
+      "roundOff": 0,
+      "grandTotal": 9500,
+      "paidAmount": 9500,
+      "balanceAmount": 0,
+      "paymentMode": "Cash",
+      "paymentStatus": "Paid",
+      "notes": "Warranty: 2026-09-16 to 2032-09-16 | Signatory: SM Autos Authorized Signatory",
+      "createdBy": "Balameena",
+      "createdAt": "2026-09-16T06:36:33.426Z"
+    },
+    {
       "id": "inv-1789533811528",
       "invoiceNumber": "1011",
       "date": "2026-09-16T04:43:31.528Z",
@@ -571,10 +635,10 @@
       "igstTotal": 0,
       "roundOff": 0,
       "grandTotal": 1950,
-      "paidAmount": 0,
-      "balanceAmount": 1950,
+      "paidAmount": 1950,
+      "balanceAmount": 0,
       "paymentMode": "Cash",
-      "paymentStatus": "Unpaid",
+      "paymentStatus": "Paid",
       "notes": "Warranty: 2026-09-16 to 2027-09-16 | Signatory: SM Autos Authorized Signatory",
       "createdBy": "Hariharan S",
       "createdAt": "2026-09-16T04:43:31.528Z"
@@ -820,6 +884,28 @@
   ],
   "payments": [
     {
+      "id": "pay-1789540651561",
+      "invoiceId": "inv-1789533811528",
+      "invoiceNumber": "1011",
+      "customerName": "Kohulakrishnan",
+      "amount": 1950,
+      "paymentMode": "Cash",
+      "date": "2026-09-16T06:37:31.561Z",
+      "notes": "[Date: 16/09/2026]",
+      "createdBy": "Balameena"
+    },
+    {
+      "id": "pay-1789540593426",
+      "invoiceId": "inv-1789540593426",
+      "invoiceNumber": "1012",
+      "customerName": "Hariharan S",
+      "amount": 9500,
+      "paymentMode": "Cash",
+      "date": "2026-09-16T06:36:33.426Z",
+      "notes": "Payment for invoice 1012",
+      "createdBy": "Balameena"
+    },
+    {
       "id": "pay-1789467551417",
       "invoiceId": "inv-1789464528279",
       "invoiceNumber": "SMA001008",
@@ -893,6 +979,46 @@
     }
   ],
   "stockTransactions": [
+    {
+      "id": "stk-1789540829414",
+      "productId": "prod-1789540521121",
+      "productName": "Exide Milege",
+      "type": "adjustment",
+      "quantity": 10,
+      "previousStock": 9,
+      "updatedStock": 19,
+      "userId": "usr-admin",
+      "userName": "Balameena",
+      "remarks": "Manual stock adjustment (+10)",
+      "date": "2026-09-16T06:40:29.415Z"
+    },
+    {
+      "id": "stk-1789540593426-prod-1789540521121",
+      "productId": "prod-1789540521121",
+      "productName": "Exide Milege",
+      "type": "sale",
+      "quantity": -1,
+      "previousStock": 10,
+      "updatedStock": 9,
+      "referenceNo": "1012",
+      "userId": "usr-admin",
+      "userName": "Balameena",
+      "remarks": "Sold in Invoice 1012",
+      "date": "2026-09-16T06:36:33.426Z"
+    },
+    {
+      "id": "stk-1789540521121",
+      "productId": "prod-1789540521121",
+      "productName": "Exide Milege",
+      "type": "opening",
+      "quantity": 10,
+      "previousStock": 0,
+      "updatedStock": 10,
+      "userId": "usr-admin",
+      "userName": "Balameena",
+      "remarks": "Initial opening stock upon product creation",
+      "date": "2026-09-16T06:35:21.121Z"
+    },
     {
       "id": "stk-1789533811528-prod-13",
       "productId": "prod-13",
@@ -1195,6 +1321,32 @@
       "credit": 2000,
       "balance": 8192,
       "notes": "Cash payment"
+    },
+    {
+      "id": "cld-1789540593426-inv",
+      "customerId": "cust-1789540593426",
+      "customerName": "Hariharan S",
+      "date": "2026-09-16T06:36:33.426Z",
+      "description": "Invoice 1012 Generated",
+      "type": "invoice",
+      "referenceNo": "1012",
+      "debit": 9500,
+      "credit": 0,
+      "balance": 9500,
+      "notes": "Total items: 1"
+    },
+    {
+      "id": "cld-1789540593426-pay",
+      "customerId": "cust-1789540593426",
+      "customerName": "Hariharan S",
+      "date": "2026-09-16T06:36:33.426Z",
+      "description": "Cash Payment Received against 1012",
+      "type": "payment",
+      "referenceNo": "1012",
+      "debit": 0,
+      "credit": 9500,
+      "balance": 0,
+      "notes": "Mode: Cash"
     }
   ],
   "supplierLedgers": [
@@ -1247,7 +1399,7 @@
     "gstin": "33ARQPH7005P1ZE",
     "pan": "ARQPH7005P",
     "invoicePrefix": "SMA",
-    "nextInvoiceNumber": 1012,
+    "nextInvoiceNumber": 1013,
     "termsAndConditions": "1. Goods once sold will be exchanged or returned within 7 days only against valid invoice.\n2. Battery warranty must be registered on manufacturer portal or claimed with original guarantee card.\n3. All electrical items carry manufacturer warranty only.\n4. Subject to Theni jurisdiction only.",
     "bankName": "HDFC Bank Ltd",
     "bankAccount": "50200012345678",
@@ -1258,6 +1410,65 @@
     "maxDiscountPercent": 25
   },
   "auditLogs": [
+    {
+      "id": "log-1789541071137-46no",
+      "userId": "usr-admin",
+      "userName": "Balameena",
+      "action": "PRODUCT_DELETED",
+      "module": "Inventory",
+      "recordId": "prod-9",
+      "details": "Deleted product Bosch Engine Air Filter for Hyundai Creta / Seltos (FLT-BOS-AIR-HY)",
+      "timestamp": "2026-09-16T06:44:31.137Z"
+    },
+    {
+      "id": "log-1789540829415-o0fs",
+      "userId": "usr-admin",
+      "userName": "Balameena",
+      "action": "STOCK_ADJUSTMENT",
+      "module": "Stock",
+      "recordId": "prod-1789540521121",
+      "details": "Adjusted stock for Exide Milege: 9 -> 19 (+10)",
+      "timestamp": "2026-09-16T06:40:29.415Z"
+    },
+    {
+      "id": "log-1789540651561-inbj",
+      "userId": "usr-admin",
+      "userName": "Balameena",
+      "action": "PAYMENT_RECORDED",
+      "module": "Billing",
+      "recordId": "inv-1789533811528",
+      "details": "Recorded payment of ₹1950 on 1011",
+      "timestamp": "2026-09-16T06:37:31.561Z"
+    },
+    {
+      "id": "log-1789540593426-hltx",
+      "userId": "usr-admin",
+      "userName": "Balameena",
+      "action": "INVOICE_CREATED",
+      "module": "Billing",
+      "recordId": "inv-1789540593426",
+      "details": "Created invoice 1012 for Hariharan S (₹9500)",
+      "timestamp": "2026-09-16T06:36:33.426Z"
+    },
+    {
+      "id": "log-1789540521121-kh52",
+      "userId": "usr-admin",
+      "userName": "Balameena",
+      "action": "PRODUCT_CREATED",
+      "module": "Inventory",
+      "recordId": "prod-1789540521121",
+      "details": "Created product Exide Milege (BAT-2140)",
+      "timestamp": "2026-09-16T06:35:21.121Z"
+    },
+    {
+      "id": "log-1789540400132-1ch9",
+      "userId": "usr-admin",
+      "userName": "Balameena",
+      "action": "USER_LOGIN",
+      "module": "Auth",
+      "details": "User logged in: admin",
+      "timestamp": "2026-09-16T06:33:20.132Z"
+    },
     {
       "id": "log-1789533811528-kh8i",
       "userId": "usr-staff",

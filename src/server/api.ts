@@ -439,23 +439,21 @@ apiRouter.post('/products', authenticateToken, requireAdmin, (req: Authenticated
   const cat = db.categories.find((c) => c.name === newProduct.category);
   if (cat) cat.productCount = (cat.productCount || 0) + 1;
 
-  // Log opening stock transaction if stock > 0
-  if (newProduct.currentStock > 0) {
-    const stockTx: StockTransaction = {
-      id: `stk-${Date.now()}`,
-      productId: newProduct.id,
-      productName: newProduct.name,
-      type: 'opening',
-      quantity: newProduct.currentStock,
-      previousStock: 0,
-      updatedStock: newProduct.currentStock,
-      userId: req.user?.id || 'usr-admin',
-      userName: req.user?.name || 'Admin',
-      remarks: 'Initial opening stock upon product creation',
-      date: new Date().toISOString(),
-    };
-    db.stockTransactions.unshift(stockTx);
-  }
+  // Log opening stock transaction
+  const stockTx: StockTransaction = {
+    id: `stk-${Date.now()}`,
+    productId: newProduct.id,
+    productName: newProduct.name,
+    type: 'opening',
+    quantity: newProduct.currentStock,
+    previousStock: 0,
+    updatedStock: newProduct.currentStock,
+    userId: req.user?.id || 'usr-admin',
+    userName: req.user?.name || 'Admin',
+    remarks: 'Initial opening stock upon product creation',
+    date: new Date().toISOString(),
+  };
+  db.stockTransactions.unshift(stockTx);
 
   logAudit(
     req.user?.id || 'admin',
