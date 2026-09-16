@@ -852,6 +852,8 @@ apiRouter.post('/invoices', authenticateToken, (req: AuthenticatedRequest, res: 
   let calculatedCgst = 0;
   let calculatedSgst = 0;
   let calculatedIgst = 0;
+  
+  const gstType = req.body.gstType || 'exclusive';
 
   const processedItems: InvoiceItem[] = items.map((rawItem, idx) => {
     const qty = Number(rawItem.quantity);
@@ -859,8 +861,15 @@ apiRouter.post('/invoices', authenticateToken, (req: AuthenticatedRequest, res: 
     const gross = qty * rate;
     const itemDiscPct = Number(rawItem.discountPercent) || 0;
     const itemDiscAmount = (gross * itemDiscPct) / 100;
-    const taxable = gross - itemDiscAmount;
     const gstRate = Number(rawItem.gstRate) || 0;
+    
+    let taxable = 0;
+    if (gstType === 'inclusive') {
+      const finalInclusive = gross - itemDiscAmount;
+      taxable = finalInclusive / (1 + (gstRate / 100));
+    } else {
+      taxable = gross - itemDiscAmount;
+    }
 
     let cgst = 0;
     let sgst = 0;
@@ -919,32 +928,63 @@ apiRouter.post('/invoices', authenticateToken, (req: AuthenticatedRequest, res: 
 
   // 3. Invoice number handling: Use dynamic / custom if provided, otherwise auto-generate sequentially
   let invoiceNumber = req.body.invoiceNumber ? String(req.body.invoiceNumber).trim() : '';
-  const prefix = db.settings.invoicePrefix || 'SMA-2026';
-  const nextNum = db.settings.nextInvoiceNumber || 1001;
+  const nextNum = db.settings.nextInvoiceNumber || 1;
 
   if (!invoiceNumber) {
-    invoiceNumber = `${prefix}-${String(nextNum).padStart(4, '0')}`;
+    invoiceNumber = String(nextNum);
     db.settings.nextInvoiceNumber = nextNum + 1;
   } else {
     // If user used the exact current sequential auto number, advance the counter
-    const currentSeq = `${prefix}-${String(nextNum).padStart(4, '0')}`;
-    const altSeq = `SMA${String(nextNum).padStart(6, '0')}`;
-    if (invoiceNumber === currentSeq || invoiceNumber === altSeq) {
+    const currentSeq = String(nextNum);
+    if (invoiceNumber === currentSeq) {
       db.settings.nextInvoiceNumber = nextNum + 1;
     }
   }
+  // --- CUSTOMER AUTO-SAVE LOGIC ---
+  let finalCustomerId = customerId;
+  const phoneToMatch = customerPhone ? customerPhone.trim() : '';
+
+  if (phoneToMatch) {
+    const existingCustomer = db.customers.find((c) => c.phone === phoneToMatch);
+    if (existingCustomer) {
+      existingCustomer.name = customerName.trim();
+      if (billingAddress) existingCustomer.address = billingAddress.trim();
+      if (customerGstin) existingCustomer.gstin = customerGstin.trim().toUpperCase();
+      existingCustomer.updatedAt = new Date().toISOString();
+      finalCustomerId = existingCustomer.id;
+    } else {
+      const newCustomer: any = {
+        id: `cust-${Date.now()}`,
+        name: customerName.trim(),
+        phone: phoneToMatch,
+        email: '',
+        address: billingAddress ? billingAddress.trim() : '',
+        gstin: customerGstin ? customerGstin.trim().toUpperCase() : '',
+        type: 'retail',
+        totalSales: 0,
+        currentOutstanding: 0,
+        status: 'active',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      db.customers.unshift(newCustomer);
+      finalCustomerId = newCustomer.id;
+    }
+  }
+  // --- END CUSTOMER AUTO-SAVE LOGIC ---
 
   const newInvoice: Invoice = {
     id: `inv-${Date.now()}`,
     invoiceNumber,
     date: new Date().toISOString(),
-    customerId: customerId || undefined,
+    customerId: finalCustomerId || undefined,
     customerName: customerName.trim(),
     customerPhone: customerPhone ? customerPhone.trim() : '',
     customerGstin: customerGstin ? customerGstin.trim().toUpperCase() : undefined,
     billingAddress: billingAddress ? billingAddress.trim() : undefined,
     shippingAddress: shippingAddress ? shippingAddress.trim() : undefined,
     isInterState: Boolean(isInterState),
+    gstType,
     items: processedItems,
     subtotal: Math.round(calculatedSubtotal * 100) / 100,
     overallDiscountType: overallDiscountType || 'fixed',
@@ -992,8 +1032,8 @@ apiRouter.post('/invoices', authenticateToken, (req: AuthenticatedRequest, res: 
   }
 
   // 5. Update customer ledger & outstanding balance
-  if (customerId) {
-    const customer = db.customers.find((c) => c.id === customerId);
+  if (finalCustomerId) {
+    const customer = db.customers.find((c) => c.id === finalCustomerId);
     if (customer) {
       // Debit: Invoice generated
       customer.currentOutstanding = (customer.currentOutstanding || 0) + roundedGrandTotal;

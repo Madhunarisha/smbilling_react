@@ -71,7 +71,7 @@ function getStoragePaths(): { dataDir: string; dbFile: string } {
     if (!fs.existsSync(tmpDbFile) && fs.existsSync(localDbFile)) {
       try {
         fs.copyFileSync(localDbFile, tmpDbFile);
-      } catch {}
+      } catch { }
     }
     return { dataDir: tmpDataDir, dbFile: tmpDbFile };
   }
@@ -102,7 +102,7 @@ async function initMongo(): Promise<void> {
       try {
         const { dbFile } = getStoragePaths();
         fs.writeFileSync(dbFile, JSON.stringify(dbCache, null, 2), 'utf-8');
-      } catch {}
+      } catch { }
       console.log('[MongoDB] Synced latest dataset from MongoDB Atlas.');
     } else if (dbCache) {
       await mongoCollection.replaceOne(
@@ -134,7 +134,7 @@ function triggerMongoSync(data: DatabaseSchema) {
         console.warn('[MongoDB] Sync failed:', err?.message);
       }
     }
-  }).catch(() => {});
+  }).catch(() => { });
 }
 
 export function getInitialData(): DatabaseSchema {
@@ -148,7 +148,7 @@ export function getInitialData(): DatabaseSchema {
       username: 'admin',
       email: 'admin@smautos.com',
       role: 'admin',
-      name: 'Sardar Manjit Singh',
+      name: 'Hariharan S',
       phone: '+91 98765 43210',
       passwordHash: adminHash,
       createdAt: '2026-01-01T08:00:00.000Z',
@@ -650,7 +650,7 @@ export function getInitialData(): DatabaseSchema {
     gstin: '33ARQPH7005P1ZE',
     pan: 'ARQPH7005P',
     invoicePrefix: 'SMA',
-    nextInvoiceNumber: 1006,
+    nextInvoiceNumber: 1,
     termsAndConditions:
       '1. Goods once sold will be exchanged or returned within 7 days only against valid invoice.\n2. Battery warranty must be registered on manufacturer portal or claimed with original guarantee card.\n3. All electrical items carry manufacturer warranty only.\n4. Subject to Theni jurisdiction only.',
     bankName: 'HDFC Bank Ltd',
@@ -672,7 +672,7 @@ export function getInitialData(): DatabaseSchema {
       previousStock: 0,
       updatedStock: 25,
       userId: 'usr-admin',
-      userName: 'Sardar Manjit Singh',
+      userName: 'Hariharan S',
       remarks: 'Initial stock intake from Exide Depot',
       date: '2026-01-05T10:00:00.000Z',
     },
@@ -685,7 +685,7 @@ export function getInitialData(): DatabaseSchema {
       previousStock: 0,
       updatedStock: 20,
       userId: 'usr-admin',
-      userName: 'Sardar Manjit Singh',
+      userName: 'Hariharan S',
       remarks: 'Opening inventory load',
       date: '2026-01-05T10:30:00.000Z',
     },
@@ -698,7 +698,7 @@ export function getInitialData(): DatabaseSchema {
       previousStock: 0,
       updatedStock: 30,
       userId: 'usr-admin',
-      userName: 'Sardar Manjit Singh',
+      userName: 'Hariharan S',
       remarks: 'Opening distributor delivery',
       date: '2026-01-08T11:00:00.000Z',
     },
@@ -850,7 +850,7 @@ export function getInitialData(): DatabaseSchema {
       paymentMode: 'Cash',
       paymentStatus: 'Paid',
       notes: 'Car battery replaced with warranty card issued.',
-      createdBy: 'Sardar Manjit Singh',
+      createdBy: 'Hariharan S',
       createdAt: '2026-09-11T11:15:00.000Z',
     },
     {
@@ -1009,7 +1009,7 @@ export function getInitialData(): DatabaseSchema {
       paymentMode: 'Cash',
       date: '2026-09-11T11:18:00.000Z',
       notes: 'Counter cash received',
-      createdBy: 'Sardar Manjit Singh',
+      createdBy: 'Hariharan S',
     },
     {
       id: 'pay-3',
@@ -1126,7 +1126,7 @@ export function getInitialData(): DatabaseSchema {
     {
       id: 'log-1',
       userId: 'usr-admin',
-      userName: 'Sardar Manjit Singh',
+      userName: 'Hariharan S',
       action: 'SYSTEM_INITIALIZATION',
       module: 'Settings',
       details: 'SM Autos & Batteries ERP initialized with master categories and stock',
@@ -1174,7 +1174,7 @@ export function readDb(): DatabaseSchema {
     const initial = getInitialData();
     try {
       fs.writeFileSync(dbFile, JSON.stringify(initial, null, 2), 'utf-8');
-    } catch {}
+    } catch { }
     dbCache = initial;
     return dbCache;
   }
@@ -1187,7 +1187,7 @@ export function readDb(): DatabaseSchema {
     const initial = getInitialData();
     try {
       fs.writeFileSync(dbFile, JSON.stringify(initial, null, 2), 'utf-8');
-    } catch {}
+    } catch { }
     dbCache = initial;
     return dbCache;
   }

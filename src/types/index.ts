@@ -140,6 +140,7 @@ export interface Invoice {
   billingAddress?: string;
   shippingAddress?: string;
   isInterState: boolean; // false = CGST + SGST, true = IGST
+  gstType?: 'inclusive' | 'exclusive';
   items: InvoiceItem[];
   subtotal: number;
   overallDiscountType?: 'percent' | 'fixed';

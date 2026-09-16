@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { X, Printer, Download, Share2, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { X, Printer, Download, Share2, ShieldCheck, CheckCircle2, Phone } from 'lucide-react';
 import { Invoice, BusinessSettings } from '../types/index.js';
 import { formatINR, formatDate, numberToWordsIndian } from '../utils/formatters.js';
 
@@ -9,6 +9,7 @@ interface InvoicePrintModalProps {
   invoice: Invoice | null;
   settings?: BusinessSettings | null;
   onShareWhatsApp?: (inv: Invoice) => void;
+  onAddPayment?: (inv: Invoice) => void;
 }
 
 export function InvoicePrintModal({
@@ -17,6 +18,7 @@ export function InvoicePrintModal({
   invoice,
   settings,
   onShareWhatsApp,
+  onAddPayment,
 }: InvoicePrintModalProps) {
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -102,11 +104,16 @@ export function InvoicePrintModal({
         >
           {/* Top Section: Logo and Status */}
           <div className="flex justify-between items-start">
-            <div className="border border-slate-200 p-2 rounded max-w-xs">
+            <div className="max-w-sm">
               {/* Placeholder for Logo, using text for now as in requirements */}
               <h1 className="text-xl font-black text-red-600 leading-tight">
                 {defaultBiz.tradeName || defaultBiz.businessName}
               </h1>
+              <div className="text-sm font-bold text-slate-900 mt-1.5 space-y-0.5">
+                <p>Poomalai Complex, Aundipatti</p>
+                <p className="flex items-center gap-1.5"><Phone className="w-4 h-4 text-slate-700" /> 9578851650</p>
+                <p>GSTIN: 33ARQPH70051ZE</p>
+              </div>
             </div>
             <div>
               <span className={`text-3xl font-bold ${
@@ -121,10 +128,7 @@ export function InvoicePrintModal({
           {/* Dates & Invoice No Row */}
           <div className="flex flex-wrap items-center justify-between text-sm text-slate-600 font-medium">
             <div>Issue Date: <span className="font-semibold text-slate-800">{formatDate(invoice.date)}</span></div>
-            <div>
-              Due Date: <span className="font-semibold text-slate-800">{formatDate(invoice.date)}</span>
-              {invoice.balanceAmount > 0 && <span className="text-red-500 ml-1">(Overdue)</span>}
-            </div>
+
             <div>Invoice No: <span className="font-semibold text-slate-800">{invoice.invoiceNumber}</span></div>
           </div>
 
@@ -138,6 +142,14 @@ export function InvoicePrintModal({
                   <th className="p-4">Quantity</th>
                   <th className="p-4">Rate</th>
                   <th className="p-4">Discount</th>
+                  {invoice.isInterState ? (
+                    <th className="p-4">IGST</th>
+                  ) : (
+                    <>
+                      <th className="p-4">CGST</th>
+                      <th className="p-4">SGST</th>
+                    </>
+                  )}
                   <th className="p-4 text-right">Amount</th>
                 </tr>
               </thead>
@@ -151,6 +163,14 @@ export function InvoicePrintModal({
                     <td className="p-4 text-slate-600">
                       {item.discountAmount > 0 ? formatINR(item.discountAmount) : '-'}
                     </td>
+                    {invoice.isInterState ? (
+                      <td className="p-4 text-slate-600">{formatINR(item.igstAmount)} <span className="text-xs text-slate-400">({item.gstRate}%)</span></td>
+                    ) : (
+                      <>
+                        <td className="p-4 text-slate-600">{formatINR(item.cgstAmount)} <span className="text-xs text-slate-400">({item.gstRate / 2}%)</span></td>
+                        <td className="p-4 text-slate-600">{formatINR(item.sgstAmount)} <span className="text-xs text-slate-400">({item.gstRate / 2}%)</span></td>
+                      </>
+                    )}
                     <td className="p-4 text-right font-medium text-slate-800">
                       {formatINR(item.totalAmount)}
                     </td>
@@ -172,26 +192,8 @@ export function InvoicePrintModal({
                   <p className="text-slate-500">End Date / Duration: <span className="text-slate-600">No warranty details provided.</span></p>
                 </div>
               </div>
-              
-              <div className="flex gap-3 text-sm">
-                <div className="w-5 h-5 flex items-center justify-center shrink-0 text-slate-400">
-                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line></svg>
-                </div>
-                <div>
-                  <h4 className="font-bold text-slate-800 mb-1">Notes</h4>
-                  <p className="text-slate-500">{invoice.notes || 'No notes available.'}</p>
-                </div>
-              </div>
 
-              <div className="flex gap-3 text-sm">
-                <div className="w-5 h-5 flex items-center justify-center shrink-0 text-slate-400">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
-                </div>
-                <div>
-                  <h4 className="font-bold text-slate-800 mb-1">Terms & Conditions</h4>
-                  <p className="text-slate-500">Standard terms apply.</p>
-                </div>
-              </div>
+
             </div>
 
             {/* Right: Totals */}
@@ -201,9 +203,26 @@ export function InvoicePrintModal({
                 <span className="font-bold text-slate-900">{formatINR(invoice.subtotal)}</span>
               </div>
               <div className="flex justify-between py-3 border-b border-slate-100">
-                <span className="text-slate-600 font-medium">Tax</span>
-                <span className="font-bold text-slate-900">{formatINR(invoice.cgstTotal + invoice.sgstTotal + invoice.igstTotal)}</span>
+                <span className="text-slate-600 font-medium">Taxable Amount</span>
+                <span className="font-bold text-slate-900">{formatINR(invoice.taxableAmount)}</span>
               </div>
+              {invoice.isInterState ? (
+                <div className="flex justify-between py-3 border-b border-slate-100">
+                  <span className="text-slate-600 font-medium">IGST</span>
+                  <span className="font-bold text-slate-900">{formatINR(invoice.igstTotal)}</span>
+                </div>
+              ) : (
+                <>
+                  <div className="flex justify-between py-3 border-b border-slate-100">
+                    <span className="text-slate-600 font-medium">CGST</span>
+                    <span className="font-bold text-slate-900">{formatINR(invoice.cgstTotal)}</span>
+                  </div>
+                  <div className="flex justify-between py-3 border-b border-slate-100">
+                    <span className="text-slate-600 font-medium">SGST</span>
+                    <span className="font-bold text-slate-900">{formatINR(invoice.sgstTotal)}</span>
+                  </div>
+                </>
+              )}
               <div className="flex justify-between py-4 mt-2">
                 <span className="font-bold text-slate-900">Total</span>
                 <span className="font-bold text-indigo-900">{formatINR(invoice.grandTotal)}</span>
@@ -219,16 +238,19 @@ export function InvoicePrintModal({
             >
               Back
             </button>
-            <button
-              className="px-6 py-2 bg-[#d82451] hover:bg-[#c01d44] text-white font-bold text-sm rounded-lg transition-colors shadow-sm"
-              onClick={() => {
-                 // The screenshot has Add Payment but logic is not wired in the print modal
-                 // In a full implementation, this might open the PaymentModal or navigate
-                 onClose();
-              }}
-            >
-              Add Payment
-            </button>
+            {invoice.balanceAmount > 0 && (
+              <button
+                className="px-6 py-2 bg-[#d82451] hover:bg-[#c01d44] text-white font-bold text-sm rounded-lg transition-colors shadow-sm cursor-pointer"
+                onClick={() => {
+                   if (onAddPayment) {
+                     onAddPayment(invoice);
+                   }
+                   onClose();
+                }}
+              >
+                Add Payment
+              </button>
+            )}
           </div>
         </div>
       </div>

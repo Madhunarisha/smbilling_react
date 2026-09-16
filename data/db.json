@@ -395,7 +395,7 @@
       "gstRate": 5,
       "discountPercent": 0,
       "openingStock": 15,
-      "currentStock": 10,
+      "currentStock": 9,
       "minStockLevel": 3,
       "unit": "Sets",
       "supplierId": "sup-4",
@@ -403,7 +403,7 @@
       "warrantyPeriod": "12 Months",
       "status": "active",
       "createdAt": "2026-01-14",
-      "updatedAt": "2026-01-14"
+      "updatedAt": "2026-09-16T04:43:31.528Z"
     }
   ],
   "customers": [
@@ -530,6 +530,55 @@
     }
   ],
   "invoices": [
+    {
+      "id": "inv-1789533811528",
+      "invoiceNumber": "1011",
+      "date": "2026-09-16T04:43:31.528Z",
+      "customerName": "Kohulakrishnan",
+      "customerPhone": "9865397239",
+      "billingAddress": "Theni",
+      "shippingAddress": "Theni",
+      "isInterState": false,
+      "gstType": "inclusive",
+      "items": [
+        {
+          "id": "item-1789533811528-0",
+          "productId": "prod-13",
+          "productName": "Specialized Optical Battery Hydrometer & Specific Gravity Sensor Kit",
+          "sku": "SP-SENS-HYD",
+          "barcode": "890123400113",
+          "quantity": 1,
+          "unit": "Sets",
+          "rate": 1950,
+          "mrp": 1950,
+          "discountPercent": 0,
+          "discountAmount": 0,
+          "taxableAmount": 1652.54,
+          "gstRate": 18,
+          "cgstAmount": 148.73,
+          "sgstAmount": 148.73,
+          "igstAmount": 0,
+          "totalAmount": 1950
+        }
+      ],
+      "subtotal": 1950,
+      "overallDiscountType": "fixed",
+      "overallDiscountValue": 0,
+      "overallDiscountAmount": 0,
+      "taxableAmount": 1652.54,
+      "cgstTotal": 148.73,
+      "sgstTotal": 148.73,
+      "igstTotal": 0,
+      "roundOff": 0,
+      "grandTotal": 1950,
+      "paidAmount": 0,
+      "balanceAmount": 1950,
+      "paymentMode": "Cash",
+      "paymentStatus": "Unpaid",
+      "notes": "Warranty: 2026-09-16 to 2027-09-16 | Signatory: SM Autos Authorized Signatory",
+      "createdBy": "Hariharan S",
+      "createdAt": "2026-09-16T04:43:31.528Z"
+    },
     {
       "id": "inv-1789471200029",
       "invoiceNumber": "SMA001010",
@@ -669,7 +718,7 @@
       "paymentMode": "Cash",
       "paymentStatus": "Paid",
       "notes": "Warranty: 2026-09-15 to 2031-09-15 | Signatory: SM Autos Authorized Signatory",
-      "createdBy": "Sardar Manjit Singh",
+      "createdBy": "Hariharan S",
       "createdAt": "2026-09-15T09:28:48.279Z"
     },
     {
@@ -717,7 +766,7 @@
       "paymentMode": "Cash",
       "paymentStatus": "Unpaid",
       "notes": "Warranty: 2026-09-15 to 2030-09-15 | Signatory: SM Autos Authorized Signatory",
-      "createdBy": "Sardar Manjit Singh",
+      "createdBy": "Hariharan S",
       "createdAt": "2026-09-15T09:28:13.161Z"
     },
     {
@@ -765,7 +814,7 @@
       "paymentMode": "Cash",
       "paymentStatus": "Paid",
       "notes": "Warranty: 2026-09-15 to 2030-09-15 | Signatory: SM Autos Authorized Signatory",
-      "createdBy": "Sardar Manjit Singh",
+      "createdBy": "Hariharan S",
       "createdAt": "2026-09-15T09:25:53.178Z"
     }
   ],
@@ -779,7 +828,7 @@
       "paymentMode": "Cash",
       "date": "2026-09-15T10:19:11.417Z",
       "notes": "[Date: 15/09/2026]",
-      "createdBy": "Sardar Manjit Singh"
+      "createdBy": "Hariharan S"
     },
     {
       "id": "pay-1789464353178",
@@ -790,7 +839,7 @@
       "paymentMode": "Cash",
       "date": "2026-09-15T09:25:53.178Z",
       "notes": "Payment for invoice SMA001006",
-      "createdBy": "Sardar Manjit Singh"
+      "createdBy": "Hariharan S"
     },
     {
       "id": "pay-1",
@@ -815,7 +864,7 @@
       "paymentMode": "Cash",
       "date": "2026-09-11T11:18:00.000Z",
       "notes": "Counter cash received",
-      "createdBy": "Sardar Manjit Singh"
+      "createdBy": "Hariharan S"
     },
     {
       "id": "pay-3",
@@ -844,6 +893,20 @@
     }
   ],
   "stockTransactions": [
+    {
+      "id": "stk-1789533811528-prod-13",
+      "productId": "prod-13",
+      "productName": "Specialized Optical Battery Hydrometer & Specific Gravity Sensor Kit",
+      "type": "sale",
+      "quantity": -1,
+      "previousStock": 10,
+      "updatedStock": 9,
+      "referenceNo": "1011",
+      "userId": "usr-staff",
+      "userName": "Hariharan S",
+      "remarks": "Sold in Invoice 1011",
+      "date": "2026-09-16T04:43:31.528Z"
+    },
     {
       "id": "stk-1789471200029-prod-12",
       "productId": "prod-12",
@@ -882,7 +945,7 @@
       "updatedStock": 18,
       "referenceNo": "VOID-SMA-2026-1001",
       "userId": "usr-admin",
-      "userName": "Sardar Manjit Singh",
+      "userName": "Hariharan S",
       "remarks": "Reversal due to cancelled/deleted Invoice SMA-2026-1001",
       "date": "2026-09-15T10:18:21.834Z"
     },
@@ -896,7 +959,7 @@
       "updatedStock": 20,
       "referenceNo": "VOID-SMA-2026-1001",
       "userId": "usr-admin",
-      "userName": "Sardar Manjit Singh",
+      "userName": "Hariharan S",
       "remarks": "Reversal due to cancelled/deleted Invoice SMA-2026-1001",
       "date": "2026-09-15T10:18:21.834Z"
     },
@@ -910,7 +973,7 @@
       "updatedStock": 12,
       "referenceNo": "VOID-SMA-2026-1004",
       "userId": "usr-admin",
-      "userName": "Sardar Manjit Singh",
+      "userName": "Hariharan S",
       "remarks": "Reversal due to cancelled/deleted Invoice SMA-2026-1004",
       "date": "2026-09-15T10:01:24.556Z"
     },
@@ -924,7 +987,7 @@
       "updatedStock": 16,
       "referenceNo": "VOID-SMA-2026-1004",
       "userId": "usr-admin",
-      "userName": "Sardar Manjit Singh",
+      "userName": "Hariharan S",
       "remarks": "Reversal due to cancelled/deleted Invoice SMA-2026-1004",
       "date": "2026-09-15T10:01:24.556Z"
     },
@@ -938,7 +1001,7 @@
       "updatedStock": 40,
       "referenceNo": "VOID-SMA-2026-1003",
       "userId": "usr-admin",
-      "userName": "Sardar Manjit Singh",
+      "userName": "Hariharan S",
       "remarks": "Reversal due to cancelled/deleted Invoice SMA-2026-1003",
       "date": "2026-09-15T09:30:26.472Z"
     },
@@ -952,7 +1015,7 @@
       "updatedStock": 2,
       "referenceNo": "VOID-SMA-2026-1003",
       "userId": "usr-admin",
-      "userName": "Sardar Manjit Singh",
+      "userName": "Hariharan S",
       "remarks": "Reversal due to cancelled/deleted Invoice SMA-2026-1003",
       "date": "2026-09-15T09:30:26.472Z"
     },
@@ -966,7 +1029,7 @@
       "updatedStock": 46,
       "referenceNo": "VOID-SMA-2026-1002",
       "userId": "usr-admin",
-      "userName": "Sardar Manjit Singh",
+      "userName": "Hariharan S",
       "remarks": "Reversal due to cancelled/deleted Invoice SMA-2026-1002",
       "date": "2026-09-15T09:30:18.453Z"
     },
@@ -980,7 +1043,7 @@
       "updatedStock": 4,
       "referenceNo": "VOID-SMA-2026-1002",
       "userId": "usr-admin",
-      "userName": "Sardar Manjit Singh",
+      "userName": "Hariharan S",
       "remarks": "Reversal due to cancelled/deleted Invoice SMA-2026-1002",
       "date": "2026-09-15T09:30:18.453Z"
     },
@@ -994,7 +1057,7 @@
       "updatedStock": 3,
       "referenceNo": "SMA001008",
       "userId": "usr-admin",
-      "userName": "Sardar Manjit Singh",
+      "userName": "Hariharan S",
       "remarks": "Sold in Invoice SMA001008",
       "date": "2026-09-15T09:28:48.279Z"
     },
@@ -1008,7 +1071,7 @@
       "updatedStock": 1,
       "referenceNo": "SMA001007",
       "userId": "usr-admin",
-      "userName": "Sardar Manjit Singh",
+      "userName": "Hariharan S",
       "remarks": "Sold in Invoice SMA001007",
       "date": "2026-09-15T09:28:13.161Z"
     },
@@ -1022,7 +1085,7 @@
       "updatedStock": 25,
       "referenceNo": "SMA001006",
       "userId": "usr-admin",
-      "userName": "Sardar Manjit Singh",
+      "userName": "Hariharan S",
       "remarks": "Sold in Invoice SMA001006",
       "date": "2026-09-15T09:25:53.178Z"
     },
@@ -1035,7 +1098,7 @@
       "previousStock": 0,
       "updatedStock": 25,
       "userId": "usr-admin",
-      "userName": "Sardar Manjit Singh",
+      "userName": "Hariharan S",
       "remarks": "Initial stock intake from Exide Depot",
       "date": "2026-01-05T10:00:00.000Z"
     },
@@ -1048,7 +1111,7 @@
       "previousStock": 0,
       "updatedStock": 20,
       "userId": "usr-admin",
-      "userName": "Sardar Manjit Singh",
+      "userName": "Hariharan S",
       "remarks": "Opening inventory load",
       "date": "2026-01-05T10:30:00.000Z"
     },
@@ -1061,7 +1124,7 @@
       "previousStock": 0,
       "updatedStock": 30,
       "userId": "usr-admin",
-      "userName": "Sardar Manjit Singh",
+      "userName": "Hariharan S",
       "remarks": "Opening distributor delivery",
       "date": "2026-01-08T11:00:00.000Z"
     },
@@ -1184,7 +1247,7 @@
     "gstin": "33ARQPH7005P1ZE",
     "pan": "ARQPH7005P",
     "invoicePrefix": "SMA",
-    "nextInvoiceNumber": 1011,
+    "nextInvoiceNumber": 1012,
     "termsAndConditions": "1. Goods once sold will be exchanged or returned within 7 days only against valid invoice.\n2. Battery warranty must be registered on manufacturer portal or claimed with original guarantee card.\n3. All electrical items carry manufacturer warranty only.\n4. Subject to Theni jurisdiction only.",
     "bankName": "HDFC Bank Ltd",
     "bankAccount": "50200012345678",
@@ -1195,6 +1258,16 @@
     "maxDiscountPercent": 25
   },
   "auditLogs": [
+    {
+      "id": "log-1789533811528-kh8i",
+      "userId": "usr-staff",
+      "userName": "Hariharan S",
+      "action": "INVOICE_CREATED",
+      "module": "Billing",
+      "recordId": "inv-1789533811528",
+      "details": "Created invoice 1011 for Kohulakrishnan (₹1950)",
+      "timestamp": "2026-09-16T04:43:31.528Z"
+    },
     {
       "id": "log-1789471200029-t7dv",
       "userId": "usr-staff",
@@ -1227,7 +1300,7 @@
     {
       "id": "log-1789469041803-ijtt",
       "userId": "usr-admin",
-      "userName": "Sardar Manjit Singh",
+      "userName": "Hariharan S",
       "action": "USER_UPDATED",
       "module": "Users",
       "details": "Updated user admin",
@@ -1236,7 +1309,7 @@
     {
       "id": "log-1789468811182-p0c1",
       "userId": "usr-admin",
-      "userName": "Sardar Manjit Singh",
+      "userName": "Hariharan S",
       "action": "USER_LOGIN",
       "module": "Auth",
       "details": "User logged in: admin",
@@ -1254,7 +1327,7 @@
     {
       "id": "log-1789468713406-5omv",
       "userId": "usr-admin",
-      "userName": "Sardar Manjit Singh",
+      "userName": "Hariharan S",
       "action": "USER_UPDATED",
       "module": "Users",
       "details": "Updated user staff",
@@ -1263,7 +1336,7 @@
     {
       "id": "log-1789467551417-ezl5",
       "userId": "usr-admin",
-      "userName": "Sardar Manjit Singh",
+      "userName": "Hariharan S",
       "action": "PAYMENT_RECORDED",
       "module": "Billing",
       "recordId": "inv-1789464528279",
@@ -1273,7 +1346,7 @@
     {
       "id": "log-1789467501835-p30v",
       "userId": "usr-admin",
-      "userName": "Sardar Manjit Singh",
+      "userName": "Hariharan S",
       "action": "INVOICE_DELETED",
       "module": "Billing",
       "recordId": "inv-1001",
@@ -1283,7 +1356,7 @@
     {
       "id": "log-1789466484556-srka",
       "userId": "usr-admin",
-      "userName": "Sardar Manjit Singh",
+      "userName": "Hariharan S",
       "action": "INVOICE_DELETED",
       "module": "Billing",
       "recordId": "inv-1004",
@@ -1293,7 +1366,7 @@
     {
       "id": "log-1789464626472-eb52",
       "userId": "usr-admin",
-      "userName": "Sardar Manjit Singh",
+      "userName": "Hariharan S",
       "action": "INVOICE_DELETED",
       "module": "Billing",
       "recordId": "inv-1003",
@@ -1303,7 +1376,7 @@
     {
       "id": "log-1789464618453-on38",
       "userId": "usr-admin",
-      "userName": "Sardar Manjit Singh",
+      "userName": "Hariharan S",
       "action": "INVOICE_DELETED",
       "module": "Billing",
       "recordId": "inv-1002",
@@ -1313,7 +1386,7 @@
     {
       "id": "log-1789464528279-zkpe",
       "userId": "usr-admin",
-      "userName": "Sardar Manjit Singh",
+      "userName": "Hariharan S",
       "action": "INVOICE_CREATED",
       "module": "Billing",
       "recordId": "inv-1789464528279",
@@ -1323,7 +1396,7 @@
     {
       "id": "log-1789464493161-1x38",
       "userId": "usr-admin",
-      "userName": "Sardar Manjit Singh",
+      "userName": "Hariharan S",
       "action": "INVOICE_CREATED",
       "module": "Billing",
       "recordId": "inv-1789464493160",
@@ -1333,7 +1406,7 @@
     {
       "id": "log-1789464353178-k9mt",
       "userId": "usr-admin",
-      "userName": "Sardar Manjit Singh",
+      "userName": "Hariharan S",
       "action": "INVOICE_CREATED",
       "module": "Billing",
       "recordId": "inv-1789464353178",
@@ -1343,7 +1416,7 @@
     {
       "id": "log-1789464301794-4kkn",
       "userId": "usr-admin",
-      "userName": "Sardar Manjit Singh",
+      "userName": "Hariharan S",
       "action": "USER_LOGIN",
       "module": "Auth",
       "details": "User logged in: admin",
@@ -1352,7 +1425,7 @@
     {
       "id": "log-1789360340300-7ls7",
       "userId": "usr-admin",
-      "userName": "Sardar Manjit Singh",
+      "userName": "Hariharan S",
       "action": "USER_LOGIN",
       "module": "Auth",
       "details": "User logged in: admin",
@@ -1361,7 +1434,7 @@
     {
       "id": "log-1789360239922-ui7x",
       "userId": "usr-admin",
-      "userName": "Sardar Manjit Singh",
+      "userName": "Hariharan S",
       "action": "USER_LOGIN",
       "module": "Auth",
       "details": "User logged in: admin",
@@ -1370,7 +1443,7 @@
     {
       "id": "log-1789360235929-j77j",
       "userId": "usr-admin",
-      "userName": "Sardar Manjit Singh",
+      "userName": "Hariharan S",
       "action": "USER_LOGIN",
       "module": "Auth",
       "details": "User logged in: admin",
@@ -1379,7 +1452,7 @@
     {
       "id": "log-1789360233232-axrk",
       "userId": "usr-admin",
-      "userName": "Sardar Manjit Singh",
+      "userName": "Hariharan S",
       "action": "USER_LOGIN",
       "module": "Auth",
       "details": "User logged in: admin",
@@ -1388,7 +1461,7 @@
     {
       "id": "log-1",
       "userId": "usr-admin",
-      "userName": "Sardar Manjit Singh",
+      "userName": "Hariharan S",
       "action": "SYSTEM_INITIALIZATION",
       "module": "Settings",
       "details": "SM Autos & Batteries ERP initialized with master categories and stock",

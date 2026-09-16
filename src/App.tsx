@@ -6,6 +6,7 @@ import { Sidebar, ActivePage } from './components/Sidebar.js';
 import { InvoicePrintModal } from './components/InvoicePrintModal.js';
 import { WhatsAppShareModal } from './components/WhatsAppShareModal.js';
 import { StockAdjustmentModal } from './components/StockAdjustmentModal.js';
+import { PaymentModal } from './components/PaymentModal.js';
 
 // Pages
 import { LoginPage } from './pages/LoginPage.js';
@@ -41,6 +42,7 @@ function MainApp() {
   // Global Modals
   const [printInvoice, setPrintInvoice] = useState<Invoice | null>(null);
   const [whatsAppInvoice, setWhatsAppInvoice] = useState<Invoice | null>(null);
+  const [paymentInvoice, setPaymentInvoice] = useState<Invoice | null>(null);
   const [businessSettings, setBusinessSettings] = useState<BusinessSettings | null>(null);
 
   // Stock Adjustment modal triggered globally
