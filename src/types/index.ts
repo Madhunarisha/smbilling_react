@@ -7,7 +7,9 @@ export interface User {
   role: UserRole;
   name: string;
   phone?: string;
+  status?: 'active' | 'inactive';
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface Category {
@@ -87,6 +89,7 @@ export interface Customer {
   currentOutstanding: number;
   notes?: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface Supplier {
@@ -111,6 +114,8 @@ export interface InvoiceItem {
   sku: string;
   brand?: string;
   barcode?: string;
+  batterySerial?: string;
+  hsnCode?: string;
   quantity: number;
   unit: string;
   rate: number;
@@ -157,6 +162,17 @@ export interface Invoice {
   paymentMode: PaymentMode;
   paymentStatus: PaymentStatus;
   notes?: string;
+  deliveryNote?: string;
+  modeOfPayment?: string;
+  referenceNo?: string;
+  otherReferences?: string;
+  buyersOrderNo?: string;
+  orderDate?: string;
+  dispatchDocNo?: string;
+  deliveryDate?: string;
+  dispatchedThrough?: string;
+  destination?: string;
+  termsOfDelivery?: string;
   createdBy: string;
   createdAt: string;
 }

@@ -1,7 +1,11 @@
 import React, { useRef } from 'react';
-import { X, Printer, Download, Share2, ShieldCheck, CheckCircle2, Phone } from 'lucide-react';
+import { X, Printer } from 'lucide-react';
 import { Invoice, BusinessSettings } from '../types/index.js';
-import { formatINR, formatDate, numberToWordsIndian } from '../utils/formatters.js';
+import {
+  numberToWordsINR,
+  formatTallyDate,
+  formatTallyCurrency,
+} from '../utils/formatters.js';
 
 interface InvoicePrintModalProps {
   isOpen: boolean;
@@ -24,237 +28,918 @@ export function InvoicePrintModal({
 
   if (!isOpen || !invoice) return null;
 
-  const defaultBiz: BusinessSettings = settings || {
-    businessName: 'SM AUTOS AND BATTERY',
-    legalName: 'HARIHARAN SHANMUGASUNDARAM',
-    tradeName: 'SM AUTOS AND BATTERY',
+  const defaultBiz: BusinessSettings = {
+    businessName: 'SRS BATTERY CENTER',
+    legalName: 'SRS BATTERY CENTER',
+    tradeName: 'SRS BATTERY CENTER',
     constitution: 'Proprietorship',
-    tagline: 'Automotive Batteries, Lubricants & Genuine Spares',
-    address: 'NO 5/1, WARD NO 10, ST-3, MELAPUDU THERU, Timmarasanayakkanur',
-    buildingNo: 'NO 5/1, WARD NO 10',
-    roadStreet: 'ST-3, MELAPUDU THERU',
-    locality: 'Timmarasanayakkanur',
-    city: 'Aundipatti',
+    tagline: 'Automotive Batteries, Inverters & Power Solutions',
+    address: 'NO : 174 ST-5, CUMBUM ROAD, PALANI CHETTIPATTI, THENI - 625531',
+    buildingNo: 'NO : 174 ST-5',
+    roadStreet: 'CUMBUM ROAD',
+    locality: 'PALANI CHETTIPATTI',
+    city: 'THENI',
     district: 'Theni',
     state: 'Tamil Nadu',
     stateCode: '33',
-    pincode: '625536',
-    phone: '+91 98765 43210',
-    alternatePhone: '+91 98111 22334',
-    email: 'billing@smautos.com',
-    gstin: '33ARQPH7005P1ZE',
-    pan: 'ARQPH7005P',
-    invoicePrefix: 'SMA-2026',
+    pincode: '625531',
+    phone: '9865397239, 9578851650',
+    alternatePhone: '9578851650',
+    email: 'srsbatterytheni@gmail.com',
+    gstin: '33GTRPK2528H1ZF',
+    pan: 'GTRPK2528H',
+    invoicePrefix: 'SRS',
     nextInvoiceNumber: 1000,
     termsAndConditions:
       '1. Goods once sold will be replaced within 7 days against valid bill.\n2. Battery warranty is handled directly as per manufacturer norms.\n3. All electrical parts carry test-warranty only.\n4. Subject to Theni jurisdiction only.',
-    bankName: 'HDFC Bank Ltd',
-    bankAccount: '50200012345678',
-    ifscCode: 'HDFC0001234',
-    bankBranch: 'Aundipatti Branch, Theni',
-    upiId: 'smautos@hdfcbank',
+    bankName: 'HDFC BANK',
+    bankAccount: '50200103878081',
+    ifscCode: 'HDFC0006749',
+    bankBranch: 'PALANICHETTIPATTY',
+    upiId: 'srsbattery@hdfcbank',
     defaultGstRate: 18,
     maxDiscountPercent: 25,
   };
+
+  const biz: BusinessSettings = {
+    ...defaultBiz,
+    ...(settings || {}),
+  };
+
+  // Buyer / Customer details
+  const customerName = invoice.customerName || 'Cash Sale';
+  const customerAddress =
+    invoice.billingAddress || invoice.shippingAddress || 'THENI';
+  const customerGstin = invoice.customerGstin || '';
+
+  // Determine Customer State
+  let customerState = 'Tamil Nadu';
+  let customerStateCode = '33';
+  if (customerGstin && customerGstin.length >= 2) {
+    const code = customerGstin.substring(0, 2);
+    if (code === '33') {
+      customerState = 'Tamil Nadu';
+      customerStateCode = '33';
+    } else {
+      customerStateCode = code;
+    }
+  }
+
+  // Totals & calculations
+  const totalQuantity = invoice.items.reduce(
+    (acc, it) => acc + (Number(it.quantity) || 0),
+    0
+  );
+  const firstUnit = invoice.items[0]?.unit || 'NOS';
+
+  // Overall tax amount
+  const totalTaxAmount = invoice.isInterState
+    ? invoice.igstTotal
+    : invoice.cgstTotal + invoice.sgstTotal;
+
+  // Spacer height to give that classic tall ERP invoice appearance
+  const itemCount = invoice.items.length;
+  const spacerHeight = Math.max(30, 160 - itemCount * 35);
 
   const handlePrint = () => {
     window.print();
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 print:p-0 print:bg-white print:static print:inset-auto">
-      <div className="bg-[#f8fafc] rounded-2xl max-w-5xl w-full flex flex-col my-4 print:shadow-none print:m-0 print:max-w-none print:w-full overflow-hidden">
-        
-        {/* Top Header */}
-        <div className="bg-white px-6 py-4 flex items-center justify-between border-b border-slate-200 print:hidden">
-          <h2 className="text-xl font-bold text-slate-900">Invoice Details</h2>
-          <div className="flex gap-3">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/75 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 print:p-0 print:bg-white print:static print:inset-auto">
+      <style>{`
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 6mm 8mm;
+          }
+          body {
+            background: #ffffff !important;
+            color: #000000 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .print-hide {
+            display: none !important;
+          }
+          .tally-invoice-page {
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            box-shadow: none !important;
+            border: none !important;
+            background: transparent !important;
+          }
+          .tally-border-box {
+            border: 1px solid #000000 !important;
+          }
+          .tally-border-t {
+            border-top: 1px solid #000000 !important;
+          }
+          .tally-border-b {
+            border-bottom: 1px solid #000000 !important;
+          }
+          .tally-border-r {
+            border-right: 1px solid #000000 !important;
+          }
+          .tally-border-l {
+            border-left: 1px solid #000000 !important;
+          }
+        }
+      `}</style>
+
+      <div className="bg-slate-100 rounded-xl max-w-4xl w-full flex flex-col my-4 shadow-2xl print:shadow-none print:m-0 print:max-w-none print:w-full print:bg-white overflow-hidden">
+        {/* Top Modal Toolbar (Hidden on print) */}
+        <div className="bg-white px-5 py-3 flex items-center justify-between border-b border-slate-200 print-hide">
+          <div className="flex items-center gap-2">
+            <h2 className="text-base font-bold text-slate-800">
+              Tax Invoice Preview
+            </h2>
+            <span
+              className={`text-xs px-2 py-0.5 rounded font-bold uppercase ${
+                invoice.paymentStatus === 'Paid'
+                  ? 'bg-emerald-100 text-emerald-700'
+                  : invoice.paymentStatus === 'Unpaid'
+                  ? 'bg-red-100 text-red-700'
+                  : 'bg-amber-100 text-amber-700'
+              }`}
+            >
+              {invoice.paymentStatus}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
             {onShareWhatsApp && (
               <button
                 type="button"
                 onClick={() => onShareWhatsApp(invoice)}
-                className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-md transition-colors shadow-sm cursor-pointer"
               >
-                <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 brightness-0 invert" />
-                Send to WhatsApp
+                <img
+                  src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg"
+                  alt="WhatsApp"
+                  className="w-3.5 h-3.5 brightness-0 invert"
+                />
+                Send WhatsApp
               </button>
             )}
+
             <button
               type="button"
               onClick={handlePrint}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-md transition-colors shadow-sm cursor-pointer"
             >
-              <Printer className="w-4 h-4" />
+              <Printer className="w-3.5 h-3.5" />
               Print
             </button>
+
             <button
               type="button"
               onClick={onClose}
-              className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+              className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-md transition-colors cursor-pointer"
+              title="Close"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        {/* Main Content Area */}
-        <div 
-          ref={printRef}
-          className="p-6 sm:p-8 bg-white print:p-4 font-sans flex flex-col gap-8 shadow-sm m-6 rounded-xl border border-slate-100 print:m-0 print:border-none print:shadow-none"
-        >
-          {/* Top Section: Logo and Status */}
-          <div className="flex justify-between items-start">
-            <div className="max-w-sm">
-              {/* Placeholder for Logo, using text for now as in requirements */}
-              <h1 className="text-xl font-black text-red-600 leading-tight">
-                {defaultBiz.tradeName || defaultBiz.businessName}
-              </h1>
-              <div className="text-sm font-bold text-slate-900 mt-1.5 space-y-0.5">
-                <p>Poomalai Complex, Aundipatti</p>
-                <p className="flex items-center gap-1.5"><Phone className="w-4 h-4 text-slate-700" /> 9578851650</p>
-                <p>GSTIN: 33ARQPH70051ZE</p>
+        {/* Printable Area Wrapper */}
+        <div className="overflow-x-auto p-4 sm:p-6 bg-slate-200/60 print:p-0 print:bg-white flex justify-center">
+          <div
+            ref={printRef}
+            className="tally-invoice-page bg-white w-full max-w-[210mm] text-black font-sans text-[11px] leading-tight shadow-md p-4 print:p-0 print:shadow-none"
+            style={{ fontFamily: "Arial, Helvetica, 'Segoe UI', sans-serif" }}
+          >
+            {/* Top Header: "Tax Invoice" */}
+            <div className="text-center font-bold text-sm tracking-wide text-black mb-1">
+              Tax Invoice
+            </div>
+
+            {/* Main Outer Box Border */}
+            <div className="tally-border-box border border-black flex flex-col bg-white">
+              {/* TOP ROW: Two Columns (Left = Seller & Buyer, Right = Metadata Grid) */}
+              <div className="flex tally-border-b border-b border-black">
+                {/* LEFT HALF (Supplier & Buyer) */}
+                <div className="w-[53%] tally-border-r border-r border-black flex flex-col justify-between">
+                  {/* Supplier / Seller Info */}
+                  <div className="p-2 space-y-0.5">
+                    <div className="font-black text-[15px] tracking-tight text-[#0f2942] uppercase">
+                      {biz.tradeName || biz.businessName}
+                    </div>
+                    <div className="text-[10.5px] uppercase text-slate-900 leading-tight">
+                      NO : 174 ST-5, CUMBUM ROAD,
+                      <br />
+                      PALANI CHETTIPATTI
+                      <br />
+                      THENI - 625531
+                    </div>
+                    <div className="text-[10.5px] pt-0.5">
+                      <span className="font-bold">GSTIN/UIN: </span>
+                      <span className="font-bold">{biz.gstin}</span>
+                    </div>
+                    <div className="text-[10.5px]">
+                      <span>State Name : </span>
+                      <span>{biz.state}</span>
+                      <span>, Code : </span>
+                      <span>{biz.stateCode}</span>
+                    </div>
+                    <div className="text-[10.5px]">
+                      <span>Contact : </span>
+                      <span>{biz.phone}</span>
+                    </div>
+                    <div className="text-[10.5px]">
+                      <span>E-Mail : </span>
+                      <span>{biz.email}</span>
+                    </div>
+                  </div>
+
+                  {/* Horizontal Divider between Seller and Buyer */}
+                  <div className="tally-border-t border-t border-black p-2 space-y-0.5 min-h-[90px]">
+                    <div className="text-[10px] text-slate-800">
+                      Buyer (Bill to)
+                    </div>
+                    <div className="font-black text-[12.5px] uppercase tracking-tight text-black">
+                      {customerName}
+                    </div>
+                    <div className="text-[10.5px] uppercase text-slate-900">
+                      {customerAddress}
+                    </div>
+                    <div className="text-[10.5px] pt-1">
+                      <span className="inline-block w-24">GSTIN/UIN</span>
+                      <span>: </span>
+                      <span className="font-bold">
+                        {customerGstin || '—'}
+                      </span>
+                    </div>
+                    <div className="text-[10.5px]">
+                      <span className="inline-block w-24">State Name</span>
+                      <span>: </span>
+                      <span>{customerState}</span>
+                      <span>, Code : </span>
+                      <span>{customerStateCode}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* RIGHT HALF (Invoice & Dispatch Metadata Grid) */}
+                <div className="w-[47%] flex flex-col text-[10.5px]">
+                  {/* Row 1: Invoice No. & Dated */}
+                  <div className="flex tally-border-b border-b border-black">
+                    <div className="w-1/2 p-1.5 tally-border-r border-r border-black min-h-[38px]">
+                      <div className="text-[9.5px] text-slate-700">
+                        Invoice No.
+                      </div>
+                      <div className="font-bold text-[12px] text-black">
+                        {invoice.invoiceNumber}
+                      </div>
+                    </div>
+                    <div className="w-1/2 p-1.5 min-h-[38px]">
+                      <div className="text-[9.5px] text-slate-700">Dated</div>
+                      <div className="font-bold text-[12px] text-black">
+                        {formatTallyDate(invoice.date)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Row 2: Delivery Note & Mode/Terms of Payment */}
+                  <div className="flex tally-border-b border-b border-black">
+                    <div className="w-1/2 p-1.5 tally-border-r border-r border-black min-h-[32px]">
+                      <div className="text-[9.5px] text-slate-700">
+                        Delivery Note
+                      </div>
+                      <div className="font-semibold text-black">
+                        {invoice.deliveryNote || ''}
+                      </div>
+                    </div>
+                    <div className="w-1/2 p-1.5 min-h-[32px]">
+                      <div className="text-[9.5px] text-slate-700">
+                        Mode/Terms of Payment
+                      </div>
+                      <div className="font-semibold text-black">
+                        {invoice.modeOfPayment || invoice.paymentMode || ''}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Row 3: Reference No. & Date. & Other References */}
+                  <div className="flex tally-border-b border-b border-black">
+                    <div className="w-1/2 p-1.5 tally-border-r border-r border-black min-h-[32px]">
+                      <div className="text-[9.5px] text-slate-700">
+                        Reference No. &amp; Date.
+                      </div>
+                      <div className="font-semibold text-black">
+                        {invoice.referenceNo || ''}
+                      </div>
+                    </div>
+                    <div className="w-1/2 p-1.5 min-h-[32px]">
+                      <div className="text-[9.5px] text-slate-700">
+                        Other References
+                      </div>
+                      <div className="font-semibold text-black">
+                        {invoice.otherReferences || ''}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Row 4: Buyer's Order No. & Dated */}
+                  <div className="flex tally-border-b border-b border-black">
+                    <div className="w-1/2 p-1.5 tally-border-r border-r border-black min-h-[32px]">
+                      <div className="text-[9.5px] text-slate-700">
+                        Buyer's Order No.
+                      </div>
+                      <div className="font-semibold text-black">
+                        {invoice.buyersOrderNo || ''}
+                      </div>
+                    </div>
+                    <div className="w-1/2 p-1.5 min-h-[32px]">
+                      <div className="text-[9.5px] text-slate-700">Dated</div>
+                      <div className="font-semibold text-black">
+                        {invoice.orderDate
+                          ? formatTallyDate(invoice.orderDate)
+                          : ''}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Row 5: Dispatch Doc No. & Delivery Note Date */}
+                  <div className="flex tally-border-b border-b border-black">
+                    <div className="w-1/2 p-1.5 tally-border-r border-r border-black min-h-[32px]">
+                      <div className="text-[9.5px] text-slate-700">
+                        Dispatch Doc No.
+                      </div>
+                      <div className="font-semibold text-black">
+                        {invoice.dispatchDocNo || ''}
+                      </div>
+                    </div>
+                    <div className="w-1/2 p-1.5 min-h-[32px]">
+                      <div className="text-[9.5px] text-slate-700">
+                        Delivery Note Date
+                      </div>
+                      <div className="font-semibold text-black">
+                        {invoice.deliveryDate
+                          ? formatTallyDate(invoice.deliveryDate)
+                          : ''}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Row 6: Dispatched through & Destination */}
+                  <div className="flex tally-border-b border-b border-black">
+                    <div className="w-1/2 p-1.5 tally-border-r border-r border-black min-h-[32px]">
+                      <div className="text-[9.5px] text-slate-700">
+                        Dispatched through
+                      </div>
+                      <div className="font-bold text-black">
+                        {invoice.dispatchedThrough || 'Saran'}
+                      </div>
+                    </div>
+                    <div className="w-1/2 p-1.5 min-h-[32px]">
+                      <div className="text-[9.5px] text-slate-700">
+                        Destination
+                      </div>
+                      <div className="font-semibold text-black">
+                        {invoice.destination || ''}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Row 7: Terms of Delivery (Spans full right width) */}
+                  <div className="p-1.5 flex-1 min-h-[36px]">
+                    <div className="text-[9.5px] text-slate-700">
+                      Terms of Delivery
+                    </div>
+                    <div className="text-[10px] text-black">
+                      {invoice.termsOfDelivery || ''}
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-            <div>
-              <span className={`text-3xl font-bold ${
-                  invoice.paymentStatus === 'Paid' ? 'text-blue-600' :
-                  invoice.paymentStatus === 'Unpaid' ? 'text-red-500' : 'text-amber-500'
-                }`}>
-                {invoice.paymentStatus.toUpperCase()}
-              </span>
-            </div>
-          </div>
 
-          {/* Dates & Invoice No Row */}
-          <div className="flex flex-wrap items-center justify-between text-sm text-slate-600 font-medium">
-            <div>Issue Date: <span className="font-semibold text-slate-800">{formatDate(invoice.date)}</span></div>
+              {/* ITEMS TABLE */}
+              <div className="w-full">
+                <table className="w-full border-collapse text-[10.5px] leading-tight">
+                  <thead>
+                    <tr className="tally-border-b border-b border-black font-bold text-center">
+                      <th className="tally-border-r border-r border-black py-1 px-1 w-[4%]">
+                        SI<br />No.
+                      </th>
+                      <th className="tally-border-r border-r border-black py-1 px-1 w-[32%] text-left">
+                        Description of Goods
+                      </th>
+                      <th className="tally-border-r border-r border-black py-1 px-1 w-[8%]">
+                        HSN/SAC
+                      </th>
+                      <th className="tally-border-r border-r border-black py-1 px-1 w-[6%]">
+                        GST<br />Rate
+                      </th>
+                      <th className="tally-border-r border-r border-black py-1 px-1 w-[9%]">
+                        Quantity
+                      </th>
+                      <th className="tally-border-r border-r border-black py-1 px-1 w-[9%] text-right">
+                        Rate<br />(Incl. of Tax)
+                      </th>
+                      <th className="tally-border-r border-r border-black py-1 px-1 w-[9%] text-right">
+                        Rate
+                      </th>
+                      <th className="tally-border-r border-r border-black py-1 px-1 w-[5%]">
+                        per
+                      </th>
+                      <th className="tally-border-r border-r border-black py-1 px-1 w-[6%] text-right">
+                        Disc. %
+                      </th>
+                      <th className="py-1 px-1.5 w-[12%] text-right">
+                        Amount
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {/* Items List */}
+                    {invoice.items.map((item, idx) => {
+                      const qty = Number(item.quantity) || 1;
+                      const taxableAmt =
+                        item.taxableAmount !== undefined &&
+                        item.taxableAmount !== null
+                          ? item.taxableAmount
+                          : item.rate * qty;
+                      const taxableRate =
+                        qty > 0 ? taxableAmt / qty : item.rate;
+                      const gstRateVal = item.gstRate || 0;
+                      const rateInclTax =
+                        item.totalAmount && qty > 0
+                          ? item.totalAmount / qty
+                          : taxableRate * (1 + gstRateVal / 100);
 
-            <div>Invoice No: <span className="font-semibold text-slate-800">{invoice.invoiceNumber}</span></div>
-          </div>
+                      const serial =
+                        item.batterySerial || item.barcode || '';
 
-          {/* Items Table */}
-          <div className="rounded-lg border border-slate-200 overflow-hidden">
-            <table className="w-full text-left text-sm border-collapse">
-              <thead className="bg-slate-50 border-b border-slate-200 text-slate-700 font-semibold">
-                <tr>
-                  <th className="p-4">Product / Service</th>
-                  <th className="p-4">Unit</th>
-                  <th className="p-4">Quantity</th>
-                  <th className="p-4">Rate</th>
-                  <th className="p-4">Discount</th>
-                  {invoice.isInterState ? (
-                    <th className="p-4">IGST</th>
-                  ) : (
-                    <>
-                      <th className="p-4">CGST</th>
-                      <th className="p-4">SGST</th>
-                    </>
-                  )}
-                  <th className="p-4 text-right">Amount</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {invoice.items.map((item, index) => (
-                  <tr key={item.id || index}>
-                    <td className="p-4 text-slate-600">{item.productName}</td>
-                    <td className="p-4 text-slate-600">{item.unit}</td>
-                    <td className="p-4 text-slate-600">{item.quantity}</td>
-                    <td className="p-4 text-slate-600">{formatINR(item.rate)}</td>
-                    <td className="p-4 text-slate-600">
-                      {item.discountAmount > 0 ? formatINR(item.discountAmount) : '-'}
-                    </td>
-                    {invoice.isInterState ? (
-                      <td className="p-4 text-slate-600">{formatINR(item.igstAmount)} <span className="text-xs text-slate-400">({item.gstRate}%)</span></td>
-                    ) : (
+                      return (
+                        <tr key={item.id || idx} className="align-top">
+                          {/* SI No. */}
+                          <td className="tally-border-r border-r border-black py-1 px-1 text-center">
+                            {idx + 1}
+                          </td>
+
+                          {/* Description of Goods */}
+                          <td className="tally-border-r border-r border-black py-1 px-1.5">
+                            <div className="font-bold text-black uppercase">
+                              {item.productName}
+                            </div>
+                            {serial && (
+                              <div className="italic text-[10px] text-slate-800 ml-3">
+                                {serial}
+                              </div>
+                            )}
+                          </td>
+
+                          {/* HSN/SAC */}
+                          <td className="tally-border-r border-r border-black py-1 px-1 text-center">
+                            {item.hsnCode || item.sku || ''}
+                          </td>
+
+                          {/* GST Rate */}
+                          <td className="tally-border-r border-r border-black py-1 px-1 text-center">
+                            {gstRateVal > 0 ? `${gstRateVal} %` : ''}
+                          </td>
+
+                          {/* Quantity */}
+                          <td className="tally-border-r border-r border-black py-1 px-1 text-center font-bold">
+                            {qty} {item.unit || 'NOS'}
+                          </td>
+
+                          {/* Rate (Incl. of Tax) */}
+                          <td className="tally-border-r border-r border-black py-1 px-1 text-right">
+                            {formatTallyCurrency(rateInclTax)}
+                          </td>
+
+                          {/* Rate (taxable) */}
+                          <td className="tally-border-r border-r border-black py-1 px-1 text-right">
+                            {formatTallyCurrency(taxableRate)}
+                          </td>
+
+                          {/* per */}
+                          <td className="tally-border-r border-r border-black py-1 px-1 text-center uppercase">
+                            {item.unit || 'NOS'}
+                          </td>
+
+                          {/* Disc. % */}
+                          <td className="tally-border-r border-r border-black py-1 px-1 text-right">
+                            {item.discountPercent > 0
+                              ? `${item.discountPercent}`
+                              : ''}
+                          </td>
+
+                          {/* Amount */}
+                          <td className="py-1 px-1.5 text-right font-semibold">
+                            {formatTallyCurrency(taxableAmt)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+
+                    {/* Intra-State Tax Lines: CGST & SGST inside the table */}
+                    {!invoice.isInterState ? (
                       <>
-                        <td className="p-4 text-slate-600">{formatINR(item.cgstAmount)} <span className="text-xs text-slate-400">({item.gstRate / 2}%)</span></td>
-                        <td className="p-4 text-slate-600">{formatINR(item.sgstAmount)} <span className="text-xs text-slate-400">({item.gstRate / 2}%)</span></td>
+                        <tr className="align-top">
+                          <td className="tally-border-r border-r border-black py-0.5 px-1 text-center"></td>
+                          <td className="tally-border-r border-r border-black py-0.5 px-1.5 text-right italic font-bold pr-4">
+                            CGST
+                          </td>
+                          <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
+                          <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
+                          <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
+                          <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
+                          <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
+                          <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
+                          <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
+                          <td className="py-0.5 px-1.5 text-right font-bold">
+                            {formatTallyCurrency(invoice.cgstTotal)}
+                          </td>
+                        </tr>
+                        <tr className="align-top">
+                          <td className="tally-border-r border-r border-black py-0.5 px-1 text-center"></td>
+                          <td className="tally-border-r border-r border-black py-0.5 px-1.5 text-right italic font-bold pr-4">
+                            SGST
+                          </td>
+                          <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
+                          <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
+                          <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
+                          <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
+                          <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
+                          <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
+                          <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
+                          <td className="py-0.5 px-1.5 text-right font-bold">
+                            {formatTallyCurrency(invoice.sgstTotal)}
+                          </td>
+                        </tr>
+                      </>
+                    ) : (
+                      /* Inter-State Tax Line: IGST */
+                      <tr className="align-top">
+                        <td className="tally-border-r border-r border-black py-0.5 px-1 text-center"></td>
+                        <td className="tally-border-r border-r border-black py-0.5 px-1.5 text-right italic font-bold pr-4">
+                          IGST
+                        </td>
+                        <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
+                        <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
+                        <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
+                        <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
+                        <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
+                        <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
+                        <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
+                        <td className="py-0.5 px-1.5 text-right font-bold">
+                          {formatTallyCurrency(invoice.igstTotal)}
+                        </td>
+                      </tr>
+                    )}
+
+                    {/* Round Off Line if applicable */}
+                    {Boolean(
+                      invoice.roundOff && Math.abs(invoice.roundOff) >= 0.01
+                    ) && (
+                      <tr className="align-top">
+                        <td className="tally-border-r border-r border-black py-0.5 px-1 text-center"></td>
+                        <td className="tally-border-r border-r border-black py-0.5 px-1.5 text-right italic font-bold pr-4">
+                          Round Off
+                        </td>
+                        <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
+                        <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
+                        <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
+                        <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
+                        <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
+                        <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
+                        <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
+                        <td className="py-0.5 px-1.5 text-right font-bold">
+                          {formatTallyCurrency(invoice.roundOff)}
+                        </td>
+                      </tr>
+                    )}
+
+                    {/* Spacer Row ensuring the vertical column lines run all the way down to Total */}
+                    <tr style={{ height: `${spacerHeight}px` }}>
+                      <td className="tally-border-r border-r border-black"></td>
+                      <td className="tally-border-r border-r border-black"></td>
+                      <td className="tally-border-r border-r border-black"></td>
+                      <td className="tally-border-r border-r border-black"></td>
+                      <td className="tally-border-r border-r border-black"></td>
+                      <td className="tally-border-r border-r border-black"></td>
+                      <td className="tally-border-r border-r border-black"></td>
+                      <td className="tally-border-r border-r border-black"></td>
+                      <td className="tally-border-r border-r border-black"></td>
+                      <td></td>
+                    </tr>
+
+                    {/* TOTAL ROW */}
+                    <tr className="tally-border-t tally-border-b border-t border-b border-black font-bold">
+                      <td className="tally-border-r border-r border-black py-1 px-1"></td>
+                      <td className="tally-border-r border-r border-black py-1 px-1.5 text-right pr-2">
+                        Total
+                      </td>
+                      <td className="tally-border-r border-r border-black py-1 px-1"></td>
+                      <td className="tally-border-r border-r border-black py-1 px-1"></td>
+                      <td className="tally-border-r border-r border-black py-1 px-1 text-center font-bold">
+                        {totalQuantity} {firstUnit}
+                      </td>
+                      <td className="tally-border-r border-r border-black py-1 px-1"></td>
+                      <td className="tally-border-r border-r border-black py-1 px-1"></td>
+                      <td className="tally-border-r border-r border-black py-1 px-1"></td>
+                      <td className="tally-border-r border-r border-black py-1 px-1"></td>
+                      <td className="py-1 px-1.5 text-right font-black text-[12px]">
+                        ₹ {formatTallyCurrency(invoice.grandTotal)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* AMOUNT CHARGEABLE IN WORDS */}
+              <div className="tally-border-b border-b border-black p-1.5">
+                <div className="flex justify-between items-center text-[10px] text-slate-800">
+                  <span>Amount Chargeable (in words)</span>
+                  <span className="italic">E. &amp; O.E</span>
+                </div>
+                <div className="font-bold text-[11.5px] mt-0.5 text-black">
+                  {numberToWordsINR(invoice.grandTotal)}
+                </div>
+              </div>
+
+              {/* HSN/SAC TAX SUMMARY TABLE */}
+              <div className="w-full">
+                <table className="w-full border-collapse text-[10px] leading-tight">
+                  <thead>
+                    {!invoice.isInterState ? (
+                      /* Intra-state Header (CGST & SGST/UTGST) */
+                      <>
+                        <tr className="tally-border-b border-b border-black font-bold text-center">
+                          <th
+                            rowSpan={2}
+                            className="tally-border-r border-r border-black py-1 px-1 w-[38%]"
+                          >
+                            HSN/SAC
+                          </th>
+                          <th
+                            rowSpan={2}
+                            className="tally-border-r border-r border-black py-1 px-1 w-[16%] text-right"
+                          >
+                            Taxable
+                            <br />
+                            Value
+                          </th>
+                          <th
+                            colSpan={2}
+                            className="tally-border-r border-r border-black py-0.5 px-1 w-[20%]"
+                          >
+                            CGST
+                          </th>
+                          <th
+                            colSpan={2}
+                            className="tally-border-r border-r border-black py-0.5 px-1 w-[20%]"
+                          >
+                            SGST/UTGST
+                          </th>
+                          <th
+                            rowSpan={2}
+                            className="py-1 px-1.5 w-[16%] text-right"
+                          >
+                            Total
+                            <br />
+                            Tax Amount
+                          </th>
+                        </tr>
+                        <tr className="tally-border-b border-b border-black font-bold text-center">
+                          <th className="tally-border-r border-r border-black py-0.5 px-1 w-[8%]">
+                            Rate
+                          </th>
+                          <th className="tally-border-r border-r border-black py-0.5 px-1 w-[12%] text-right">
+                            Amount
+                          </th>
+                          <th className="tally-border-r border-r border-black py-0.5 px-1 w-[8%]">
+                            Rate
+                          </th>
+                          <th className="tally-border-r border-r border-black py-0.5 px-1 w-[12%] text-right">
+                            Amount
+                          </th>
+                        </tr>
+                      </>
+                    ) : (
+                      /* Inter-state Header (IGST) */
+                      <>
+                        <tr className="tally-border-b border-b border-black font-bold text-center">
+                          <th
+                            rowSpan={2}
+                            className="tally-border-r border-r border-black py-1 px-1 w-[40%]"
+                          >
+                            HSN/SAC
+                          </th>
+                          <th
+                            rowSpan={2}
+                            className="tally-border-r border-r border-black py-1 px-1 w-[20%] text-right"
+                          >
+                            Taxable Value
+                          </th>
+                          <th
+                            colSpan={2}
+                            className="tally-border-r border-r border-black py-0.5 px-1 w-[24%]"
+                          >
+                            IGST
+                          </th>
+                          <th
+                            rowSpan={2}
+                            className="py-1 px-1.5 w-[16%] text-right"
+                          >
+                            Total Tax Amount
+                          </th>
+                        </tr>
+                        <tr className="tally-border-b border-b border-black font-bold text-center">
+                          <th className="tally-border-r border-r border-black py-0.5 px-1 w-[10%]">
+                            Rate
+                          </th>
+                          <th className="tally-border-r border-r border-black py-0.5 px-1 w-[14%] text-right">
+                            Amount
+                          </th>
+                        </tr>
                       </>
                     )}
-                    <td className="p-4 text-right font-medium text-slate-800">
-                      {formatINR(item.totalAmount)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                  </thead>
+                  <tbody>
+                    {/* Tax Breakdown Data Row */}
+                    <tr className="align-top">
+                      <td className="tally-border-r border-r border-black py-1 px-1 text-center">
+                        {invoice.items[0]?.hsnCode ||
+                          invoice.items[0]?.sku ||
+                          ''}
+                      </td>
+                      <td className="tally-border-r border-r border-black py-1 px-1 text-right">
+                        {formatTallyCurrency(invoice.taxableAmount)}
+                      </td>
+                      {!invoice.isInterState ? (
+                        <>
+                          <td className="tally-border-r border-r border-black py-1 px-1 text-center">
+                            {(invoice.items[0]?.gstRate || 18) / 2}%
+                          </td>
+                          <td className="tally-border-r border-r border-black py-1 px-1 text-right">
+                            {formatTallyCurrency(invoice.cgstTotal)}
+                          </td>
+                          <td className="tally-border-r border-r border-black py-1 px-1 text-center">
+                            {(invoice.items[0]?.gstRate || 18) / 2}%
+                          </td>
+                          <td className="tally-border-r border-r border-black py-1 px-1 text-right">
+                            {formatTallyCurrency(invoice.sgstTotal)}
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="tally-border-r border-r border-black py-1 px-1 text-center">
+                            {invoice.items[0]?.gstRate || 18}%
+                          </td>
+                          <td className="tally-border-r border-r border-black py-1 px-1 text-right">
+                            {formatTallyCurrency(invoice.igstTotal)}
+                          </td>
+                        </>
+                      )}
+                      <td className="py-1 px-1.5 text-right">
+                        {formatTallyCurrency(totalTaxAmount)}
+                      </td>
+                    </tr>
 
-          {/* Bottom Section */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-2">
-            {/* Left: Warranty, Notes, Terms */}
-            <div className="space-y-6">
-              <div className="flex gap-3 text-sm">
-                <ShieldCheck className="w-5 h-5 text-slate-400 shrink-0" />
-                <div>
-                  <h4 className="font-bold text-slate-800 mb-1">Warranty Details</h4>
-                  <p className="text-slate-500 mb-0.5">Start Date: <span className="text-slate-600">{new Date().toISOString()}</span></p>
-                  <p className="text-slate-500">End Date / Duration: <span className="text-slate-600">No warranty details provided.</span></p>
+                    {/* Tax Breakdown Total Row */}
+                    <tr className="tally-border-t border-t border-black font-bold">
+                      <td className="tally-border-r border-r border-black py-1 px-1.5 text-right">
+                        Total
+                      </td>
+                      <td className="tally-border-r border-r border-black py-1 px-1 text-right">
+                        {formatTallyCurrency(invoice.taxableAmount)}
+                      </td>
+                      {!invoice.isInterState ? (
+                        <>
+                          <td className="tally-border-r border-r border-black py-1 px-1"></td>
+                          <td className="tally-border-r border-r border-black py-1 px-1 text-right">
+                            {formatTallyCurrency(invoice.cgstTotal)}
+                          </td>
+                          <td className="tally-border-r border-r border-black py-1 px-1"></td>
+                          <td className="tally-border-r border-r border-black py-1 px-1 text-right">
+                            {formatTallyCurrency(invoice.sgstTotal)}
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="tally-border-r border-r border-black py-1 px-1"></td>
+                          <td className="tally-border-r border-r border-black py-1 px-1 text-right">
+                            {formatTallyCurrency(invoice.igstTotal)}
+                          </td>
+                        </>
+                      )}
+                      <td className="py-1 px-1.5 text-right">
+                        {formatTallyCurrency(totalTaxAmount)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* TAX AMOUNT IN WORDS */}
+              <div className="tally-border-t tally-border-b border-t border-b border-black p-1.5 text-[10.5px]">
+                <span>Tax Amount (in words) : </span>
+                <span className="font-bold">
+                  {numberToWordsINR(totalTaxAmount)}
+                </span>
+              </div>
+
+              {/* FOOTER SECTION: Declaration & Bank Details / Signatory */}
+              <div className="flex">
+                {/* Left Half: Declaration */}
+                <div className="w-[50%] tally-border-r border-r border-black p-2 flex flex-col justify-end">
+                  <div className="font-bold text-[10px] underline mb-1">
+                    Declaration
+                  </div>
+                  <div className="text-[9.5px] text-slate-800 leading-tight">
+                    We declare that this invoice shows the actual price of the
+                    goods described and that all particulars are true and
+                    correct.
+                  </div>
+                </div>
+
+                {/* Right Half: Bank Details & Signatory */}
+                <div className="w-[50%] p-2 flex flex-col justify-between">
+                  {/* Bank Details */}
+                  <div className="text-[10px] space-y-0.5">
+                    <div className="font-bold mb-0.5">
+                      Company's Bank Details
+                    </div>
+                    <div className="grid grid-cols-[105px_1fr] gap-x-1">
+                      <span>Bank Name</span>
+                      <span>
+                        : <strong className="font-bold uppercase">{biz.bankName}</strong>
+                      </span>
+                      <span>A/c No.</span>
+                      <span>
+                        : <strong className="font-bold">{biz.bankAccount}</strong>
+                      </span>
+                      <span>Branch &amp; IFS Code</span>
+                      <span>
+                        : <strong className="font-bold uppercase">{biz.bankBranch} &amp; {biz.ifscCode}</strong>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Signatory Box */}
+                  <div className="pt-4 flex flex-col items-end">
+                    <div className="font-bold text-[10.5px] uppercase">
+                      for {biz.tradeName || biz.businessName}
+                    </div>
+                    <div className="h-10"></div>
+                    <div className="font-bold text-[10.5px]">
+                      Authorised Signatory
+                    </div>
+                  </div>
                 </div>
               </div>
-
-
             </div>
 
-            {/* Right: Totals */}
-            <div className="text-sm">
-              <div className="flex justify-between py-3 border-b border-slate-100">
-                <span className="text-slate-600 font-medium">Amount</span>
-                <span className="font-bold text-slate-900">{formatINR(invoice.subtotal)}</span>
+            {/* Centered Bottom Footer Lines (Outside Box) */}
+            <div className="mt-1.5 text-center space-y-0.5">
+              <div className="font-bold text-[10.5px] tracking-wider uppercase">
+                SUBJECT TO THENI JURISDICTION
               </div>
-              <div className="flex justify-between py-3 border-b border-slate-100">
-                <span className="text-slate-600 font-medium">Taxable Amount</span>
-                <span className="font-bold text-slate-900">{formatINR(invoice.taxableAmount)}</span>
-              </div>
-              {invoice.isInterState ? (
-                <div className="flex justify-between py-3 border-b border-slate-100">
-                  <span className="text-slate-600 font-medium">IGST</span>
-                  <span className="font-bold text-slate-900">{formatINR(invoice.igstTotal)}</span>
-                </div>
-              ) : (
-                <>
-                  <div className="flex justify-between py-3 border-b border-slate-100">
-                    <span className="text-slate-600 font-medium">CGST</span>
-                    <span className="font-bold text-slate-900">{formatINR(invoice.cgstTotal)}</span>
-                  </div>
-                  <div className="flex justify-between py-3 border-b border-slate-100">
-                    <span className="text-slate-600 font-medium">SGST</span>
-                    <span className="font-bold text-slate-900">{formatINR(invoice.sgstTotal)}</span>
-                  </div>
-                </>
-              )}
-              <div className="flex justify-between py-4 mt-2">
-                <span className="font-bold text-slate-900">Total</span>
-                <span className="font-bold text-indigo-900">{formatINR(invoice.grandTotal)}</span>
+              <div className="text-[9.5px] text-slate-700">
+                This is a Computer Generated Invoice
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Action Buttons (Hidden on Print) */}
-          <div className="flex justify-end gap-3 pt-6 print:hidden">
+        {/* Action Buttons (Hidden on Print) */}
+        <div className="bg-white px-5 py-3 border-t border-slate-200 flex justify-end gap-3 print-hide">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-5 py-2 border border-slate-300 text-slate-700 font-semibold text-xs rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
+          >
+            Close
+          </button>
+          {invoice.balanceAmount > 0 && onAddPayment && (
             <button
-              onClick={onClose}
-              className="px-6 py-2 border border-pink-500 text-pink-600 font-bold text-sm rounded-lg hover:bg-pink-50 transition-colors"
+              type="button"
+              className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-lg transition-colors shadow-sm cursor-pointer"
+              onClick={() => {
+                onAddPayment(invoice);
+                onClose();
+              }}
             >
-              Back
+              Add Payment
             </button>
-            {invoice.balanceAmount > 0 && (
-              <button
-                className="px-6 py-2 bg-[#d82451] hover:bg-[#c01d44] text-white font-bold text-sm rounded-lg transition-colors shadow-sm cursor-pointer"
-                onClick={() => {
-                   if (onAddPayment) {
-                     onAddPayment(invoice);
-                   }
-                   onClose();
-                }}
-              >
-                Add Payment
-              </button>
-            )}
-          </div>
+          )}
+          <button
+            type="button"
+            onClick={handlePrint}
+            className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-lg transition-colors shadow-sm cursor-pointer flex items-center gap-1.5"
+          >
+            <Printer className="w-4 h-4" />
+            Print Invoice
+          </button>
         </div>
       </div>
     </div>
   );
 }
-
