@@ -145,6 +145,27 @@ export function AddInvoice({ onInvoiceCreated, onNavigateToList }: AddInvoicePro
   // Table Items
   const [items, setItems] = useState<InvoiceRowItem[]>([]);
 
+  // Auto-calculate warranty end date based on items and start date
+  useEffect(() => {
+    let maxMonths = 0;
+    items.forEach((item) => {
+      if (item.warrantyPeriod) {
+        let m = 0;
+        const matchMonths = item.warrantyPeriod.match(/(\d+)\s*month/i);
+        const matchYears = item.warrantyPeriod.match(/(\d+)\s*year/i);
+        if (matchMonths) m = parseInt(matchMonths[1], 10);
+        else if (matchYears) m = parseInt(matchYears[1], 10) * 12;
+        if (m > maxMonths) maxMonths = m;
+      }
+    });
+
+    if (maxMonths > 0 && warrantyStartDate) {
+      const endD = new Date(warrantyStartDate);
+      endD.setMonth(endD.getMonth() + maxMonths);
+      setWarrantyEndDate(endD.toISOString().split('T')[0]);
+    }
+  }, [items, warrantyStartDate]);
+
   // Bank & Notes
   const [banks, setBanks] = useState<BankOption[]>([
     {
@@ -529,16 +550,6 @@ export function AddInvoice({ onInvoiceCreated, onNavigateToList }: AddInvoicePro
 
   // Add Product to Table
   const addProductToTable = (product: Product) => {
-    // Calculate end date based on warranty period if available
-    if (product.warrantyPeriod) {
-      const matchMonths = product.warrantyPeriod.match(/(\d+)\s*month/i);
-      if (matchMonths) {
-        const months = parseInt(matchMonths[1], 10);
-        const endD = new Date();
-        endD.setMonth(endD.getMonth() + months);
-        setWarrantyEndDate(endD.toISOString().split('T')[0]);
-      }
-    }
 
     // Determine GST tax rate dynamically (Batteries & spares: 18%, Specialized parts: 5%, or Custom)
     let initialTax = 0;

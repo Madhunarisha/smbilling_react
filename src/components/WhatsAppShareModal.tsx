@@ -28,7 +28,8 @@ export function WhatsAppShareModal({ isOpen, onClose, invoice }: WhatsAppShareMo
     invoice.invoiceNumber,
     invoice.grandTotal,
     invoice.paidAmount,
-    invoice.balanceAmount
+    invoice.balanceAmount,
+    invoice.items
   );
 
   const handleCopy = () => {

@@ -86,8 +86,6 @@ async function initMongo(): Promise<void> {
     const client = new MongoClient(uri, {
       serverSelectionTimeoutMS: 5000,
       connectTimeoutMS: 10000,
-      tls: true,
-      tlsAllowInvalidCertificates: true,
     });
     await client.connect();
     const db = client.db(process.env.MONGODB_DB_NAME || 'SMDB');

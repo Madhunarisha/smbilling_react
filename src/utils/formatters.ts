@@ -104,9 +104,15 @@ export function generateWhatsAppMessage(
   invoiceNumber: string,
   totalAmount: number,
   paidAmount: number,
-  balanceAmount: number
+  balanceAmount: number,
+  items?: any[]
 ): string {
-  return `Dear ${customerName || 'Customer'},\n\nThank you for purchasing from *SM Autos & Batteries*.\n\n📄 *Invoice No:* ${invoiceNumber}\n💰 *Invoice Amount:* ${formatINR(totalAmount)}\n✅ *Paid Amount:* ${formatINR(paidAmount)}\n⚠️ *Balance Due:* ${formatINR(balanceAmount)}\n\nFor any warranty or battery maintenance support, contact us at +91 98765 43210.\n\nThank you for your business!`;
+  let itemsList = '';
+  if (items && items.length > 0) {
+    itemsList = '\n🛒 *Products:*\n' + items.map(item => `• ${item.productName} (x${item.quantity})`).join('\n') + '\n';
+  }
+
+  return `Dear ${customerName || 'Customer'},\n\nThank you for purchasing from *SM Autos & Battery*.\n\n📄 *Invoice No:* ${invoiceNumber}\n${itemsList}💰 *Invoice Amount:* ${formatINR(totalAmount)}\n✅ *Paid Amount:* ${formatINR(paidAmount)}\n⚠️ *Balance Due:* ${formatINR(balanceAmount)}\n\nFor any warranty or battery maintenance support, contact us at +91 9578851650.\n\nThank you for your business!`;
 }
 
 export function getWhatsAppShareUrl(phone: string, message: string): string {
