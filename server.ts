@@ -64,12 +64,7 @@ async function startServer() {
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`SM Autos & Batteries ERP Server running on http://0.0.0.0:${PORT}`);
-    if (process.env.MONGODB_URI) {
-      const masked = process.env.MONGODB_URI.replace(/:([^@]+)@/, ':****@');
-      console.log(`MongoDB URI configured: ${masked}`);
-    } else {
-      console.log('MongoDB URI not configured. Using local storage.');
-    }
+    console.log('Using local SQLite database via better-sqlite3.');
   });
 }
 

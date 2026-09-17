@@ -2,33 +2,13 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
-import bcrypt from 'bcryptjs';
 
-function getStoragePaths(): { dataDir: string; dbFile: string } {
-  const localDataDir = path.join(process.cwd(), 'data');
-  const localDbFile = path.join(localDataDir, 'database.sqlite');
-
-  try {
-    if (!fs.existsSync(localDataDir)) {
-      fs.mkdirSync(localDataDir, { recursive: true });
-    }
-    const testFile = path.join(localDataDir, '.write-test');
-    fs.writeFileSync(testFile, 'ok');
-    fs.unlinkSync(testFile);
-    return { dataDir: localDataDir, dbFile: localDbFile };
-  } catch {
-    const tmpDataDir = path.join(os.tmpdir(), 'smbilling-data');
-    if (!fs.existsSync(tmpDataDir)) {
-      fs.mkdirSync(tmpDataDir, { recursive: true });
-    }
-    const tmpDbFile = path.join(tmpDataDir, 'database.sqlite');
-    return { dataDir: tmpDataDir, dbFile: tmpDbFile };
-  }
+const localDataDir = path.join(process.cwd(), 'data');
+if (!fs.existsSync(localDataDir)) {
+  fs.mkdirSync(localDataDir, { recursive: true });
 }
 
-const { dbFile } = getStoragePaths();
-export const db = new Database(dbFile);
-
+export const db = new Database(path.join(localDataDir, 'database.sqlite'));
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
@@ -42,7 +22,6 @@ db.exec(`
     name TEXT NOT NULL,
     phone TEXT,
     passwordHash TEXT NOT NULL,
-    status TEXT DEFAULT 'active',
     createdAt TEXT NOT NULL
   );
 
@@ -268,106 +247,20 @@ db.exec(`
   );
 `);
 
-// Seed Admin User
-const adminExists = db.prepare('SELECT id FROM users WHERE username = ?').get('admin');
-if (!adminExists) {
-  const salt = bcrypt.genSaltSync(10);
-  const adminHash = bcrypt.hashSync('admin123', salt);
-  db.prepare(`
-    INSERT INTO users (id, username, email, role, name, phone, passwordHash, status, createdAt)
-    VALUES (@id, @username, @email, @role, @name, @phone, @passwordHash, @status, @createdAt)
-  `).run({
-    id: 'usr-admin',
-    username: 'admin',
-    email: 'admin@smautos.com',
-    role: 'admin',
-    name: 'Hariharan S',
-    phone: '+91 98765 43210',
-    passwordHash: adminHash,
-    status: 'active',
-    createdAt: new Date().toISOString()
-  });
-}
-
-// Seed Business Settings
-const settingsExist = db.prepare('SELECT key FROM settings WHERE key = ?').get('businessName');
-if (!settingsExist) {
-  const defaultSettings = {
-    businessName: 'SM Autos & Batteries ERP',
-    tagline: 'Complete Auto Solutions',
-    address: '123 Auto Market',
-    city: 'New Delhi',
-    state: 'Delhi',
-    stateCode: '07',
-    pincode: '110001',
-    phone: '+91 98765 43210',
-    email: 'contact@smautos.com',
-    gstin: '07AAACA1234A1Z5',
-    invoicePrefix: 'SMA',
-    nextInvoiceNumber: 1001,
-    termsAndConditions: 'Goods once sold will not be taken back.',
-    bankName: 'HDFC Bank',
-    bankAccount: '12345678901234',
-    ifscCode: 'HDFC0001234',
-    bankBranch: 'Main Branch',
-    upiId: 'smautos@hdfcbank',
-    defaultGstRate: 18,
-    maxDiscountPercent: 20
-  };
-  
-  const insertSetting = db.prepare('INSERT INTO settings (key, value) VALUES (@key, @value)');
-  const seedSettings = db.transaction((settings: Record<string, any>) => {
-    for (const [key, value] of Object.entries(settings)) {
-      insertSetting.run({ key, value: String(value) });
-    }
-  });
-  seedSettings(defaultSettings);
-}
-
 export function logAudit(userId: string, userName: string, action: string, module: string, details: string, recordId?: string) {
   const log = {
-    id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-    userId: userId || 'system',
-    userName: userName || 'System',
+    id: `log-\${Date.now()}-\${Math.random().toString(36).substring(2, 6)}`,
+    userId,
+    userName,
     action,
     module,
-    recordId: recordId || null,
+    recordId,
     details,
     timestamp: new Date().toISOString(),
   };
   
-  try {
-    db.prepare(`
-      INSERT INTO audit_logs (id, userId, userName, action, module, recordId, details, timestamp)
-      VALUES (@id, @userId, @userName, @action, @module, @recordId, @details, @timestamp)
-    `).run(log);
-  } catch (error) {
-    console.error('Failed to log audit:', error);
-  }
-}
-
-// Shim for progressive migration of api.ts
-export function readDb(): any {
-  return {
-    users: db.prepare('SELECT * FROM users').all(),
-    customers: db.prepare('SELECT * FROM customers').all(),
-    products: db.prepare('SELECT * FROM products').all(),
-    invoices: db.prepare('SELECT * FROM invoices').all(),
-    categories: db.prepare('SELECT * FROM categories').all(),
-    suppliers: db.prepare('SELECT * FROM suppliers').all(),
-    stockTransactions: db.prepare('SELECT * FROM stock_transactions').all(),
-    customerLedgers: db.prepare('SELECT * FROM customer_ledgers').all(),
-    supplierLedgers: db.prepare('SELECT * FROM supplier_ledgers').all(),
-    returns: db.prepare('SELECT * FROM returns').all(),
-    payments: db.prepare('SELECT * FROM payments').all(),
-  };
-}
-
-export function writeDb(data: any): void {
-  // no-op shim
-}
-
-// Helper to provide a mock mongo object for backward compatibility during transition if needed
-export function getMongoDb() {
-  return null; 
+  db.prepare(`
+    INSERT INTO audit_logs (id, userId, userName, action, module, recordId, details, timestamp)
+    VALUES (@id, @userId, @userName, @action, @module, @recordId, @details, @timestamp)
+  `).run(log);
 }

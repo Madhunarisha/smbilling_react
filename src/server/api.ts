@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
-import { readDb, writeDb, logAudit, getInitialData, getMongoDb } from './db.js';
+import { db, readDb, writeDb, logAudit, getMongoDb } from './db.js';
 import {
   authenticateToken,
   requireAdmin,
@@ -32,12 +32,7 @@ apiRouter.post('/auth/login', (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Username/email and password are required.' });
   }
 
-  const db = readDb();
-  const user = db.users.find(
-    (u) =>
-      u.username.toLowerCase() === username.trim().toLowerCase() ||
-      u.email.toLowerCase() === username.trim().toLowerCase()
-  );
+  const user = db.prepare('SELECT * FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?)').get(username.trim(), username.trim()) as any;
 
   if (!user) {
     return res.status(401).json({ error: 'Invalid username or password.' });
@@ -56,8 +51,7 @@ apiRouter.post('/auth/login', (req: Request, res: Response) => {
 });
 
 apiRouter.get('/auth/me', authenticateToken, (req: AuthenticatedRequest, res: Response) => {
-  const db = readDb();
-  const user = db.users.find((u) => u.id === req.user?.id);
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user?.id) as any;
   if (!user) {
     return res.status(404).json({ error: 'User not found.' });
   }
@@ -71,13 +65,10 @@ apiRouter.put('/auth/me/credentials', authenticateToken, (req: AuthenticatedRequ
     return res.status(400).json({ error: 'Current password is required.' });
   }
 
-  const db = readDb();
-  const userIndex = db.users.findIndex((u) => u.id === req.user?.id);
-  if (userIndex === -1) {
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user?.id) as any;
+  if (!user) {
     return res.status(404).json({ error: 'User not found.' });
   }
-  
-  const user = db.users[userIndex];
   
   // Verify current password
   const isValid = bcrypt.compareSync(currentPassword, user.passwordHash);
@@ -85,22 +76,25 @@ apiRouter.put('/auth/me/credentials', authenticateToken, (req: AuthenticatedRequ
     return res.status(401).json({ error: 'Incorrect current password.' });
   }
 
+  let usernameToUpdate = user.username;
+  let passwordHashToUpdate = user.passwordHash;
+
   // Update credentials
   if (newUsername && newUsername.trim()) {
     // Check if new username is already taken by another user
-    const exists = db.users.find(u => u.id !== user.id && u.username.toLowerCase() === newUsername.trim().toLowerCase());
+    const exists = db.prepare('SELECT id FROM users WHERE id != ? AND LOWER(username) = LOWER(?)').get(user.id, newUsername.trim());
     if (exists) {
       return res.status(400).json({ error: 'Username is already taken.' });
     }
-    db.users[userIndex].username = newUsername.trim();
+    usernameToUpdate = newUsername.trim();
   }
   
   if (newPassword && newPassword.trim()) {
     const salt = bcrypt.genSaltSync(10);
-    db.users[userIndex].passwordHash = bcrypt.hashSync(newPassword.trim(), salt);
+    passwordHashToUpdate = bcrypt.hashSync(newPassword.trim(), salt);
   }
 
-  writeDb(db);
+  db.prepare('UPDATE users SET username = ?, passwordHash = ? WHERE id = ?').run(usernameToUpdate, passwordHashToUpdate, user.id);
   logAudit(user.id, user.name, 'CREDENTIALS_UPDATE', 'Auth', 'User updated their credentials');
 
   res.json({ message: 'Credentials updated successfully' });
@@ -111,21 +105,20 @@ apiRouter.put('/auth/me/credentials', authenticateToken, (req: AuthenticatedRequ
 // -------------------------------------------------------------
 
 apiRouter.get('/users', authenticateToken, requireAdmin, (req: Request, res: Response) => {
-  const db = readDb();
+  const users = db.prepare('SELECT * FROM users').all();
   // Return users without password hashes
-  const safeUsers = db.users.map(({ passwordHash: _, ...u }) => u);
+  const safeUsers = users.map(({ passwordHash: _, ...u }: any) => u);
   res.json(safeUsers);
 });
 
 apiRouter.post('/users', authenticateToken, requireAdmin, (req: AuthenticatedRequest, res: Response) => {
-  const db = readDb();
   const { name, username, email, role, status, password } = req.body;
 
   if (!name || !username || !password) {
     return res.status(400).json({ error: 'Name, username, and password are required.' });
   }
 
-  const existing = db.users.find((u) => u.username.toLowerCase() === username.trim().toLowerCase());
+  const existing = db.prepare('SELECT id FROM users WHERE LOWER(username) = LOWER(?)').get(username.trim());
   if (existing) {
     return res.status(400).json({ error: 'Username is already taken.' });
   }
@@ -143,25 +136,25 @@ apiRouter.post('/users', authenticateToken, requireAdmin, (req: AuthenticatedReq
     passwordHash: bcrypt.hashSync(password, salt),
   };
 
-  db.users.push(newUser);
+  db.prepare(`
+    INSERT INTO users (id, name, username, email, role, status, phone, createdAt, passwordHash)
+    VALUES (@id, @name, @username, @email, @role, @status, @phone, @createdAt, @passwordHash)
+  `).run(newUser);
+
   logAudit(req.user?.id || 'admin', req.user?.name || 'Admin', 'USER_CREATED', 'Users', `Created user ${newUser.username}`);
-  writeDb(db);
 
   const { passwordHash: _, ...safeUser } = newUser;
   res.status(201).json(safeUser);
 });
 
 apiRouter.put('/users/:id', authenticateToken, requireAdmin, (req: AuthenticatedRequest, res: Response) => {
-  const db = readDb();
-  const index = db.users.findIndex((u) => u.id === req.params.id);
-  
-  if (index === -1) return res.status(404).json({ error: 'User not found' });
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id) as any;
+  if (!user) return res.status(404).json({ error: 'User not found' });
   
   const { name, username, email, role, status, password } = req.body;
-  const user = db.users[index];
 
   if (username && username.trim().toLowerCase() !== user.username.toLowerCase()) {
-    const existing = db.users.find((u) => u.id !== user.id && u.username.toLowerCase() === username.trim().toLowerCase());
+    const existing = db.prepare('SELECT id FROM users WHERE id != ? AND LOWER(username) = LOWER(?)').get(user.id, username.trim());
     if (existing) return res.status(400).json({ error: 'Username is already taken.' });
     user.username = username.trim();
   }
@@ -176,9 +169,13 @@ apiRouter.put('/users/:id', authenticateToken, requireAdmin, (req: Authenticated
     user.passwordHash = bcrypt.hashSync(password.trim(), salt);
   }
 
-  db.users[index] = user;
+  db.prepare(`
+    UPDATE users 
+    SET name = @name, username = @username, email = @email, role = @role, status = @status, passwordHash = @passwordHash
+    WHERE id = @id
+  `).run(user);
+
   logAudit(req.user?.id || 'admin', req.user?.name || 'Admin', 'USER_UPDATED', 'Users', `Updated user ${user.username}`);
-  writeDb(db);
 
   const { passwordHash: _, ...safeUser } = user;
   res.json(safeUser);
@@ -1883,9 +1880,6 @@ apiRouter.post('/audit-logs/clear', authenticateToken, requireAdmin, (req: Authe
   res.json({ message: 'Audit logs cleared successfully.' });
 });
 
-apiRouter.post('/settings/reset', authenticateToken, requireAdmin, (req: AuthenticatedRequest, res: Response) => {
-  const initial = getInitialData();
-  writeDb(initial);
-  logAudit(req.user?.id || 'admin', req.user?.name || 'Admin', 'DATABASE_RESET', 'System', 'Reset database to default seed state');
-  res.json({ message: 'Database reset successfully' });
-});
+// apiRouter.post('/settings/reset', authenticateToken, requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+//   res.status(501).json({ error: 'Not implemented in SQLite backend' });
+// });
