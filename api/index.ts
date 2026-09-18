@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import express, { Request, Response, NextFunction } from 'express';
 import { apiRouter } from '../src/server/api.js';
-import { initDb } from '../src/server/db.js';
+import { initDb, db } from '../src/server/db.js';
 
 const app = express();
 
@@ -9,16 +9,18 @@ const app = express();
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Initialize SQLite Cloud schema once on cold start
+// Initialize SQLite Cloud schema once on cold start or reconnection
 let dbReady = false;
 let dbInitError: Error | null = null;
 
 const ensureDb = async () => {
-  if (dbReady) return;
+  if (dbReady && db.isConnected()) return;
   try {
     await initDb();
     dbReady = true;
+    dbInitError = null;
   } catch (err: any) {
+    dbReady = false;
     dbInitError = err;
     throw err;
   }
@@ -44,6 +46,7 @@ app.get('/api/health', (req: Request, res: Response) => {
     service: 'SM Autos & Batteries ERP Backend (Vercel Serverless)',
     sqliteCloudConfigured: Boolean(process.env.SQLITECLOUD_URL),
     dbReady,
+    dbConnected: db.isConnected(),
     timestamp: new Date().toISOString(),
   });
 });

@@ -1,13 +1,82 @@
 import { Database } from '@sqlitecloud/drivers';
 import bcrypt from 'bcryptjs';
 
-const CLOUD_URL = process.env.SQLITECLOUD_URL;
-if (!CLOUD_URL) {
-  throw new Error('SQLITECLOUD_URL is not set in environment variables.');
+let currentDbInstance: Database | null = null;
+
+function getDbInstance(): Database {
+  const url = process.env.SQLITECLOUD_URL;
+  if (!url) {
+    throw new Error('SQLITECLOUD_URL is not set in environment variables.');
+  }
+
+  const conn = (currentDbInstance as any)?.connection;
+  if (!currentDbInstance || (conn && conn.connected === false)) {
+    if (currentDbInstance) {
+      try {
+        currentDbInstance.close();
+      } catch (e) {
+        // ignore close error on dead connection
+      }
+    }
+    console.log('[SQLiteCloud] Creating new database connection instance...');
+    currentDbInstance = new Database(url);
+  }
+  return currentDbInstance;
 }
 
-// Single shared cloud database connection
-export const db = new Database(CLOUD_URL);
+export function resetDbConnection(): Database {
+  const url = process.env.SQLITECLOUD_URL;
+  if (!url) {
+    throw new Error('SQLITECLOUD_URL is not set in environment variables.');
+  }
+  if (currentDbInstance) {
+    try {
+      currentDbInstance.close();
+    } catch (e) {
+      // ignore error
+    }
+  }
+  console.log('[SQLiteCloud] Reconnecting database instance...');
+  currentDbInstance = new Database(url);
+  return currentDbInstance;
+}
+
+// Proxy 'db' object to handle auto-reconnection and query auto-retry on disconnection
+export const db: Database = new Proxy({} as Database, {
+  get(_target, prop, receiver) {
+    if (prop === 'sql') {
+      return async function (sql: any, ...values: any[]) {
+        let instance = getDbInstance();
+        try {
+          return await instance.sql(sql, ...values);
+        } catch (err: any) {
+          const errMsg = err?.message || String(err);
+          const isConnError =
+            errMsg.includes('Connection unavailable') ||
+            errMsg.includes('disconnected') ||
+            errMsg.includes('ERR_CONNECTION_NOT_ESTABLISHED') ||
+            err?.errorCode === 'ERR_CONNECTION_NOT_ESTABLISHED' ||
+            err?.code === 'ERR_CONNECTION_NOT_ESTABLISHED';
+
+          if (isConnError) {
+            console.warn('[SQLiteCloud] Connection unavailable. Reconnecting and retrying query...');
+            instance = resetDbConnection();
+            return await instance.sql(sql, ...values);
+          }
+          throw err;
+        }
+      };
+    }
+
+    const instance = getDbInstance();
+    const value = Reflect.get(instance, prop, receiver);
+    if (typeof value === 'function') {
+      return value.bind(instance);
+    }
+    return value;
+  },
+});
+
 
 // ---------------------------------------------------------------
 // Schema Initialization
