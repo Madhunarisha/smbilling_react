@@ -67,9 +67,38 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`SM Autos & Batteries ERP Server running on http://0.0.0.0:${PORT}`);
     console.log('Connected to SQLite Cloud (SMDB).');
+  });
+
+  server.on('error', async (err: any) => {
+    if (err.code === 'EADDRINUSE') {
+      console.warn(`\n⚠️  Port ${PORT} is already in use. Killing existing process and retrying...\n`);
+      const { execSync } = await import('child_process');
+      try {
+        execSync(`lsof -ti tcp:${PORT} | xargs kill -9`, { stdio: 'ignore' });
+      } catch {}
+      setTimeout(() => {
+        server.close();
+        app.listen(PORT, '0.0.0.0', () => {
+          console.log(`SM Autos & Batteries ERP Server running on http://0.0.0.0:${PORT}`);
+          console.log('Connected to SQLite Cloud (SMDB).');
+        });
+      }, 1500);
+    } else {
+      console.error('Server error:', err);
+      process.exit(1);
+    }
+  });
+
+  // Graceful shutdown on Ctrl+C
+  process.on('SIGINT', () => {
+    console.log('\nShutting down server...');
+    server.close(() => process.exit(0));
+  });
+  process.on('SIGTERM', () => {
+    server.close(() => process.exit(0));
   });
 }
 
