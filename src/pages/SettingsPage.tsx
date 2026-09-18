@@ -49,7 +49,7 @@ export function SettingsPage() {
     state: 'Tamil Nadu',
     stateCode: '33',
     pincode: '625536',
-    phone: '+91 98765 43210',
+    phone: '+91 9578851650',
     alternatePhone: '+91 98111 22334',
     email: 'billing@smautos.com',
     gstin: '33ARQPH7005P1ZE',
@@ -171,11 +171,10 @@ export function SettingsPage() {
         <button
           type="button"
           onClick={() => setActiveTab('profile')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-            activeTab === 'profile'
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'profile'
               ? 'bg-amber-500 text-slate-950 shadow-xs'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-          }`}
+            }`}
         >
           <Building2 className="w-4 h-4" />
           <span>Business Identity &amp; Tax Info</span>
@@ -184,11 +183,10 @@ export function SettingsPage() {
         <button
           type="button"
           onClick={() => setActiveTab('security')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-            activeTab === 'security'
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'security'
               ? 'bg-amber-500 text-slate-950 shadow-xs'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-          }`}
+            }`}
         >
           <Lock className="w-4 h-4" />
           <span>Security &amp; Credentials</span>
@@ -198,11 +196,10 @@ export function SettingsPage() {
           <button
             type="button"
             onClick={() => setActiveTab('audit')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'audit'
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'audit'
                 ? 'bg-amber-500 text-slate-950 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
+              }`}
           >
             <History className="w-4 h-4" />
             <span>Security &amp; Audit Trail ({auditLogs.length})</span>

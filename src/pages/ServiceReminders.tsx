@@ -86,7 +86,7 @@ export function ServiceReminders() {
 
   const handleSendWhatsApp = (item: ServiceReminderItem) => {
     const message = encodeURIComponent(
-      `Dear ${item.customerName}, Greetings from SM Autos & Batteries!\n\nThis is a friendly reminder for your vehicle (${item.vehicleModel}):\nService: ${item.serviceType}\nBattery: ${item.batteryModel}\nDue Date: ${item.dueDate}\n\nVisit us for a free computerized load testing and warranty inspection.\nPhone: +91 98765 43210`
+      `Dear ${item.customerName}, Greetings from SM Autos & Batteries!\n\nThis is a friendly reminder for your vehicle (${item.vehicleModel}):\nService: ${item.serviceType}\nBattery: ${item.batteryModel}\nDue Date: ${item.dueDate}\n\nVisit us for a free computerized load testing and warranty inspection.\nPhone: +91 9578851650`
     );
     window.open(`https://wa.me/91${item.phone}?text=${message}`, '_blank');
     setReminders((prev) =>
@@ -179,11 +179,10 @@ export function ServiceReminders() {
                 key={type}
                 type="button"
                 onClick={() => setFilterType(type)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
-                  filterType === type
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${filterType === type
                     ? 'bg-[#c81e3a] text-white shadow-xs'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
+                  }`}
               >
                 {type === 'all' ? 'All Alerts' : type}
               </button>
@@ -248,13 +247,12 @@ export function ServiceReminders() {
                   </td>
                   <td className="py-3 px-3">
                     <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        item.status === 'Completed'
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${item.status === 'Completed'
                           ? 'bg-emerald-100 text-emerald-800'
                           : item.status === 'Sent'
-                          ? 'bg-blue-100 text-blue-800'
-                          : 'bg-amber-100 text-amber-800'
-                      }`}
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-amber-100 text-amber-800'
+                        }`}
                     >
                       {item.status}
                     </span>

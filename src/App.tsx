@@ -89,8 +89,15 @@ function MainApp() {
     return <LoginPage />;
   }
 
-  const handleOpenPrintModal = (invoice: Invoice) => {
-    setPrintInvoice(invoice);
+  const handleOpenPrintModal = async (invoice: Invoice) => {
+    try {
+      // Always fetch the full invoice so items are real (not list placeholders)
+      const full = await api.getInvoiceById(invoice.id);
+      setPrintInvoice(full);
+    } catch {
+      // Fallback to the passed invoice if fetch fails
+      setPrintInvoice(invoice);
+    }
   };
 
   const handleOpenWhatsAppModal = (invoice: Invoice) => {

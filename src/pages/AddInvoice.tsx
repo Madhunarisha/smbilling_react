@@ -147,6 +147,24 @@ export function AddInvoice({ onInvoiceCreated, onNavigateToList }: AddInvoicePro
 
   // Auto-calculate warranty end date based on items and start date
   useEffect(() => {
+    // Fetch banks
+    const fetchBanks = async () => {
+      try {
+        const token = localStorage.getItem('smautos_token');
+        const res = await fetch('/api/banks', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setBanks(data);
+          if (data.length > 0) setSelectedBankId(data[0].id);
+        }
+      } catch (err) {
+        console.error('Failed to fetch banks', err);
+      }
+    };
+    fetchBanks();
+
     let maxMonths = 0;
     items.forEach((item) => {
       if (item.warrantyPeriod) {
@@ -717,27 +735,43 @@ export function AddInvoice({ onInvoiceCreated, onNavigateToList }: AddInvoicePro
   const totalAmount = Math.round((taxableAmount + totalGstAmount) * 100) / 100;
 
   // Add Bank
-  const handleAddNewBank = (e: React.FormEvent) => {
+  const handleAddNewBank = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newBankName.trim() || !newBankAcc.trim()) {
       showToast('Please enter bank name and account number', 'error');
       return;
     }
-    const newB: BankOption = {
-      id: `bank-${Date.now()}`,
-      bankName: newBankName.trim(),
-      accountNumber: newBankAcc.trim(),
-      ifsc: newBankIfsc.trim().toUpperCase(),
-      branch: newBankBranch.trim(),
-    };
-    setBanks((prev) => [...prev, newB]);
-    setSelectedBankId(newB.id);
-    setShowAddBankModal(false);
-    setNewBankName('');
-    setNewBankAcc('');
-    setNewBankIfsc('');
-    setNewBankBranch('');
-    showToast('Bank account added successfully', 'success');
+    try {
+      const token = localStorage.getItem('smautos_token');
+      const res = await fetch('/api/banks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          bankName: newBankName.trim(),
+          accountNumber: newBankAcc.trim(),
+          ifsc: newBankIfsc.trim(),
+          branch: newBankBranch.trim()
+        })
+      });
+      if (res.ok) {
+        const newB = await res.json();
+        setBanks((prev) => [...prev, newB]);
+        setSelectedBankId(newB.id);
+        setShowAddBankModal(false);
+        setNewBankName('');
+        setNewBankAcc('');
+        setNewBankIfsc('');
+        setNewBankBranch('');
+        showToast('Bank account added successfully', 'success');
+      } else {
+        showToast('Failed to add bank', 'error');
+      }
+    } catch (err) {
+      showToast('Network error', 'error');
+    }
   };
 
   // Trigger Payment Now popup matching reference
@@ -1512,45 +1546,45 @@ export function AddInvoice({ onInvoiceCreated, onNavigateToList }: AddInvoicePro
             {/* Right Column: Financial Calculations & Signature */}
             <div className="lg:col-span-5 space-y-4">
               {/* Totals Summary Card with Dynamic Tax Rows */}
-              <div className="p-4 bg-slate-50/80 rounded-xl border border-slate-200 space-y-2 text-xs sm:text-sm">
-                <div className="flex justify-between text-slate-600">
-                  <span>Sub Amount</span>
-                  <span className="font-mono">{formatINR(subAmount)}</span>
+              <div className="p-5 bg-slate-50 rounded-xl border border-slate-200 space-y-3 text-sm">
+                <div className="grid grid-cols-2 gap-4 text-slate-600">
+                  <span className="text-right font-medium">Sub Amount</span>
+                  <span className="font-mono text-right">{formatINR(subAmount)}</span>
                 </div>
-                <div className="flex justify-between text-slate-600">
-                  <span>Taxable Amount</span>
-                  <span className="font-mono">{formatINR(taxableAmount)}</span>
+                <div className="grid grid-cols-2 gap-4 text-slate-600">
+                  <span className="text-right font-medium">Taxable Amount</span>
+                  <span className="font-mono text-right">{formatINR(taxableAmount)}</span>
                 </div>
 
                 {/* Dynamic GST Breakdown based on user selection */}
                 {applyGst ? (
                   isInterState ? (
-                    <div className="flex justify-between text-slate-700 font-semibold bg-blue-50/60 px-2 py-1 rounded">
-                      <span>IGST (Inter-State)</span>
-                      <span className="font-mono text-blue-900">{formatINR(igstAmount)}</span>
+                    <div className="grid grid-cols-2 gap-4 text-slate-700 font-semibold bg-blue-50/60 px-2 py-1.5 rounded">
+                      <span className="text-right">IGST (Inter-State)</span>
+                      <span className="font-mono text-right text-blue-900">{formatINR(igstAmount)}</span>
                     </div>
                   ) : (
                     <>
-                      <div className="flex justify-between text-slate-600">
-                        <span>CGST (Central Tax)</span>
-                        <span className="font-mono">{formatINR(cgstAmount)}</span>
+                      <div className="grid grid-cols-2 gap-4 text-slate-600">
+                        <span className="text-right font-medium">CGST (Central Tax)</span>
+                        <span className="font-mono text-right">{formatINR(cgstAmount)}</span>
                       </div>
-                      <div className="flex justify-between text-slate-600">
-                        <span>SGST (State Tax)</span>
-                        <span className="font-mono">{formatINR(sgstAmount)}</span>
+                      <div className="grid grid-cols-2 gap-4 text-slate-600">
+                        <span className="text-right font-medium">SGST (State Tax)</span>
+                        <span className="font-mono text-right">{formatINR(sgstAmount)}</span>
                       </div>
                     </>
                   )
                 ) : (
-                  <div className="flex justify-between text-slate-500 italic bg-slate-100 px-2 py-1 rounded">
-                    <span>GST Tax (Exempt / Nil)</span>
-                    <span className="font-mono">₹0.00</span>
+                  <div className="grid grid-cols-2 gap-4 text-slate-500 italic bg-slate-100 px-2 py-1.5 rounded">
+                    <span className="text-right">GST Tax (Exempt / Nil)</span>
+                    <span className="font-mono text-right">₹0.00</span>
                   </div>
                 )}
 
-                <div className="flex justify-between text-base font-black text-slate-900 pt-2 border-t border-slate-300">
-                  <span>Total Amount</span>
-                  <span className="font-mono text-slate-950">{formatINR(totalAmount)}</span>
+                <div className="grid grid-cols-2 gap-4 text-base font-black text-slate-900 pt-3 border-t border-slate-300">
+                  <span className="text-right">Total Amount</span>
+                  <span className="font-mono text-right">{formatINR(totalAmount)}</span>
                 </div>
               </div>
 

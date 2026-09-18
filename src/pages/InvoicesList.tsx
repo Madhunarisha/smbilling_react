@@ -249,7 +249,7 @@ export function InvoicesList({
 
                     <td className="p-3 text-center font-mono">
                       <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold">
-                        {inv.items.length} {inv.items.length === 1 ? 'part' : 'parts'}
+                        {inv.items?.length ?? '—'} {(inv.items?.length ?? 0) === 1 ? 'part' : 'parts'}
                       </span>
                     </td>
 

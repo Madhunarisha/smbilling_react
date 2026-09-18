@@ -4,10 +4,15 @@ import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { apiRouter } from './src/server/api.js';
+import { initDb } from './src/server/db.js';
+
 
 async function startServer() {
   const app = express();
   const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+
+  // Initialize SQLite Cloud — creates tables & seeds defaults
+  await initDb();
 
   // Body parser middlewares
   app.use(express.json({ limit: '10mb' }));
@@ -21,7 +26,7 @@ async function startServer() {
     res.json({
       status: 'ok',
       service: 'SM Autos & Batteries ERP Backend',
-      mongoConfigured: Boolean(process.env.MONGODB_URI),
+      sqliteCloudConfigured: Boolean(process.env.SQLITECLOUD_URL),
       timestamp: new Date().toISOString(),
     });
   });
@@ -64,7 +69,7 @@ async function startServer() {
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`SM Autos & Batteries ERP Server running on http://0.0.0.0:${PORT}`);
-    console.log('Using local SQLite database via better-sqlite3.');
+    console.log('Connected to SQLite Cloud (SMDB).');
   });
 }
 

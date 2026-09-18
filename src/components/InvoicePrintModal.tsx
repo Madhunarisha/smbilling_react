@@ -29,41 +29,61 @@ export function InvoicePrintModal({
   if (!isOpen || !invoice) return null;
 
   const defaultBiz: BusinessSettings = {
-    businessName: 'SRS BATTERY CENTER',
-    legalName: 'SRS BATTERY CENTER',
-    tradeName: 'SRS BATTERY CENTER',
+    businessName: 'SM AUTOS & BATTERY',
+    legalName: 'SM AUTOS & BATTERY',
+    tradeName: 'SM AUTOS & BATTERY',
     constitution: 'Proprietorship',
-    tagline: 'Automotive Batteries, Inverters & Power Solutions',
-    address: 'NO : 174 ST-5, CUMBUM ROAD, PALANI CHETTIPATTI, THENI - 625531',
-    buildingNo: 'NO : 174 ST-5',
-    roadStreet: 'CUMBUM ROAD',
-    locality: 'PALANI CHETTIPATTI',
-    city: 'THENI',
+    tagline: 'Complete Auto Solutions',
+    address: 'No:5/1, Mela Pudu Theru, Thimmarasanayakkanur, Aundipatti',
+    buildingNo: 'No:5/1',
+    roadStreet: 'Mela Pudu Theru',
+    locality: 'Thimmarasanayakkanur, Aundipatti',
+    city: 'Theni',
     district: 'Theni',
     state: 'Tamil Nadu',
     stateCode: '33',
-    pincode: '625531',
-    phone: '9865397239, 9578851650',
-    alternatePhone: '9578851650',
-    email: 'srsbatterytheni@gmail.com',
-    gstin: '33GTRPK2528H1ZF',
-    pan: 'GTRPK2528H',
-    invoicePrefix: 'SRS',
+    pincode: '625536',
+    phone: '+91 9578851650',
+    alternatePhone: '',
+    email: 'contact@smautos.com',
+    gstin: '33ARQPH7005P1ZE',
+    pan: '',
+    invoicePrefix: 'SM AUTOS & BATTERY',
     nextInvoiceNumber: 1000,
-    termsAndConditions:
-      '1. Goods once sold will be replaced within 7 days against valid bill.\n2. Battery warranty is handled directly as per manufacturer norms.\n3. All electrical parts carry test-warranty only.\n4. Subject to Theni jurisdiction only.',
-    bankName: 'HDFC BANK',
-    bankAccount: '50200103878081',
-    ifscCode: 'HDFC0006749',
-    bankBranch: 'PALANICHETTIPATTY',
-    upiId: 'srsbattery@hdfcbank',
+    termsAndConditions: 'Goods once sold will not be taken back.',
+    bankName: 'HDFC Bank',
+    bankAccount: '12345678901234',
+    ifscCode: 'HDFC0001234',
+    bankBranch: 'Main Branch',
+    upiId: 'smautos@hdfcbank',
     defaultGstRate: 18,
-    maxDiscountPercent: 25,
+    maxDiscountPercent: 20,
   };
 
+  // Merge API settings — map all known API key names into the biz object
+  const apiSettings = (settings || {}) as BusinessSettings;
   const biz: BusinessSettings = {
     ...defaultBiz,
-    ...(settings || {}),
+    ...apiSettings,
+    // Ensure these keys are always populated from API if available
+    businessName: apiSettings.businessName || defaultBiz.businessName,
+    legalName: apiSettings.legalName || apiSettings.businessName || defaultBiz.businessName,
+    tradeName: apiSettings.tradeName || apiSettings.businessName || defaultBiz.businessName,
+    tagline: apiSettings.tagline || defaultBiz.tagline,
+    address: apiSettings.address || defaultBiz.address,
+    city: apiSettings.city || defaultBiz.city,
+    state: apiSettings.state || defaultBiz.state,
+    stateCode: String(apiSettings.stateCode || defaultBiz.stateCode),
+    pincode: apiSettings.pincode || defaultBiz.pincode,
+    phone: apiSettings.phone || defaultBiz.phone,
+    email: apiSettings.email || defaultBiz.email,
+    gstin: apiSettings.gstin || defaultBiz.gstin,
+    bankName: apiSettings.bankName || defaultBiz.bankName,
+    bankAccount: apiSettings.bankAccount || defaultBiz.bankAccount,
+    ifscCode: apiSettings.ifscCode || defaultBiz.ifscCode,
+    bankBranch: apiSettings.bankBranch || defaultBiz.bankBranch,
+    upiId: apiSettings.upiId || defaultBiz.upiId,
+    termsAndConditions: apiSettings.termsAndConditions || defaultBiz.termsAndConditions,
   };
 
   // Buyer / Customer details
@@ -86,11 +106,12 @@ export function InvoicePrintModal({
   }
 
   // Totals & calculations
-  const totalQuantity = invoice.items.reduce(
+  const safeItems = Array.isArray(invoice.items) ? invoice.items.filter(Boolean) : [];
+  const totalQuantity = safeItems.reduce(
     (acc, it) => acc + (Number(it.quantity) || 0),
     0
   );
-  const firstUnit = invoice.items[0]?.unit || 'NOS';
+  const firstUnit = safeItems[0]?.unit || 'NOS';
 
   // Overall tax amount
   const totalTaxAmount = invoice.isInterState
@@ -98,7 +119,7 @@ export function InvoicePrintModal({
     : invoice.cgstTotal + invoice.sgstTotal;
 
   // Spacer height to give that classic tall ERP invoice appearance
-  const itemCount = invoice.items.length;
+  const itemCount = safeItems.length;
   const spacerHeight = Math.max(30, 160 - itemCount * 35);
 
   const handlePrint = () => {
@@ -229,9 +250,10 @@ export function InvoicePrintModal({
                       {biz.tradeName || biz.businessName}
                     </div>
                     <div className="text-[10.5px] uppercase text-slate-900 leading-tight">
-                      NO : 174 ST-5, CUMBUM ROAD,
+                      NO : 5/1 ST-3, MELAPUDU THERU <br />
+                      THIMMARASANAYAKKANUR
                       <br />
-                      PALANI CHETTIPATTI
+                      
                       <br />
                       THENI - 625531
                     </div>
@@ -456,7 +478,7 @@ export function InvoicePrintModal({
                   </thead>
                   <tbody>
                     {/* Items List */}
-                    {invoice.items.map((item, idx) => {
+                    {safeItems.map((item, idx) => {
                       const qty = Number(item.quantity) || 1;
                       const taxableAmt =
                         item.taxableAmount !== undefined &&
@@ -766,8 +788,8 @@ export function InvoicePrintModal({
                     {/* Tax Breakdown Data Row */}
                     <tr className="align-top">
                       <td className="tally-border-r border-r border-black py-1 px-1 text-center">
-                        {invoice.items[0]?.hsnCode ||
-                          invoice.items[0]?.sku ||
+                        {safeItems[0]?.hsnCode ||
+                          safeItems[0]?.sku ||
                           ''}
                       </td>
                       <td className="tally-border-r border-r border-black py-1 px-1 text-right">
@@ -776,13 +798,13 @@ export function InvoicePrintModal({
                       {!invoice.isInterState ? (
                         <>
                           <td className="tally-border-r border-r border-black py-1 px-1 text-center">
-                            {(invoice.items[0]?.gstRate || 18) / 2}%
+                            {(safeItems[0]?.gstRate || 18) / 2}%
                           </td>
                           <td className="tally-border-r border-r border-black py-1 px-1 text-right">
                             {formatTallyCurrency(invoice.cgstTotal)}
                           </td>
                           <td className="tally-border-r border-r border-black py-1 px-1 text-center">
-                            {(invoice.items[0]?.gstRate || 18) / 2}%
+                            {(safeItems[0]?.gstRate || 18) / 2}%
                           </td>
                           <td className="tally-border-r border-r border-black py-1 px-1 text-right">
                             {formatTallyCurrency(invoice.sgstTotal)}
@@ -791,7 +813,7 @@ export function InvoicePrintModal({
                       ) : (
                         <>
                           <td className="tally-border-r border-r border-black py-1 px-1 text-center">
-                            {invoice.items[0]?.gstRate || 18}%
+                            {safeItems[0]?.gstRate || 18}%
                           </td>
                           <td className="tally-border-r border-r border-black py-1 px-1 text-right">
                             {formatTallyCurrency(invoice.igstTotal)}
