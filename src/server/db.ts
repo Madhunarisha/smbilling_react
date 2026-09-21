@@ -45,29 +45,40 @@ export function resetDbConnection(): Database {
   return currentDbInstance;
 }
 
-// Proxy 'db' object to handle auto-reconnection and query auto-retry on disconnection
+// Proxy 'db' object to handle auto-reconnection and query auto-retry on disconnection/waking up
 export const db: Database = new Proxy({} as Database, {
   get(_target, prop, receiver) {
     if (prop === 'sql') {
       return async function (sql: any, ...values: any[]) {
-        let instance = getDbInstance();
-        try {
-          return await instance.sql(sql, ...values);
-        } catch (err: any) {
-          const errMsg = err?.message || String(err);
-          const isConnError =
-            errMsg.includes('Connection unavailable') ||
-            errMsg.includes('disconnected') ||
-            errMsg.includes('ERR_CONNECTION_NOT_ESTABLISHED') ||
-            err?.errorCode === 'ERR_CONNECTION_NOT_ESTABLISHED' ||
-            err?.code === 'ERR_CONNECTION_NOT_ESTABLISHED';
+        let attempts = 0;
+        const maxAttempts = 5;
 
-          if (isConnError) {
-            console.warn('[SQLiteCloud] Connection unavailable. Reconnecting and retrying query...');
-            instance = resetDbConnection();
+        while (attempts < maxAttempts) {
+          attempts++;
+          let instance = getDbInstance();
+          try {
             return await instance.sql(sql, ...values);
+          } catch (err: any) {
+            const errMsg = err?.message || String(err);
+            const isConnError =
+              errMsg.includes('Connection unavailable') ||
+              errMsg.includes('disconnected') ||
+              errMsg.includes('ERR_CONNECTION_NOT_ESTABLISHED') ||
+              errMsg.includes('Waking Up') ||
+              errMsg.includes('timeout') ||
+              errMsg.includes('ECONNREFUSED') ||
+              errMsg.includes('socket hang up') ||
+              err?.errorCode === 'ERR_CONNECTION_NOT_ESTABLISHED' ||
+              err?.code === 'ERR_CONNECTION_NOT_ESTABLISHED';
+
+            if (isConnError && attempts < maxAttempts) {
+              console.warn(`[SQLiteCloud] Database waking up or connection unavailable (attempt ${attempts}/${maxAttempts}). Retrying in 1.5s...`);
+              resetDbConnection();
+              await new Promise((resolve) => setTimeout(resolve, 1500));
+              continue;
+            }
+            throw err;
           }
-          throw err;
         }
       };
     }

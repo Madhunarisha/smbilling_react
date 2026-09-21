@@ -19,15 +19,28 @@ let dbInitError: Error | null = null;
 
 const ensureDb = async () => {
   if (dbReady && db.isConnected()) return;
-  try {
-    await initDb();
-    dbReady = true;
-    dbInitError = null;
-  } catch (err: any) {
-    dbReady = false;
-    dbInitError = err;
-    throw err;
+  let attempts = 0;
+  const maxAttempts = 4;
+  let lastErr: any = null;
+
+  while (attempts < maxAttempts) {
+    attempts++;
+    try {
+      await initDb();
+      dbReady = true;
+      dbInitError = null;
+      return;
+    } catch (err: any) {
+      dbReady = false;
+      dbInitError = err;
+      lastErr = err;
+      console.warn(`[ensureDb] Init attempt ${attempts}/${maxAttempts} failed. Retrying in 1.5s...`, err?.message);
+      if (attempts < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+      }
+    }
   }
+  throw lastErr;
 };
 
 // Middleware: ensure DB is initialized before any API request
