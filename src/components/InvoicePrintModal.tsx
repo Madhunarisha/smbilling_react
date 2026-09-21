@@ -134,45 +134,43 @@ export function InvoicePrintModal({
             size: A4 portrait;
             margin: 4mm 5mm;
           }
+          *, *::before, *::after {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
           html, body {
-            height: 100% !important;
-            max-height: 100% !important;
+            width: 100% !important;
+            height: auto !important;
+            min-height: 0 !important;
             margin: 0 !important;
             padding: 0 !important;
             background: #ffffff !important;
             color: #000000 !important;
-            overflow: hidden !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
+            overflow: visible !important;
           }
-          header, aside, main, nav, footer, .print-hide {
-            display: none !important;
+          body * {
+            visibility: hidden !important;
           }
-          #root, #root > div, .min-h-screen {
-            height: auto !important;
-            min-height: 0 !important;
-            background: #ffffff !important;
-            padding: 0 !important;
-            margin: 0 !important;
+          .invoice-printable-wrapper,
+          .invoice-printable-wrapper * {
+            visibility: visible !important;
           }
-          .invoice-modal-overlay,
-          .invoice-modal-card,
           .invoice-printable-wrapper {
-            position: static !important;
-            display: block !important;
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
-            width: 100% !important;
-            height: auto !important;
-            min-height: 0 !important;
-            max-height: none !important;
             background: #ffffff !important;
             box-shadow: none !important;
             border: none !important;
             overflow: visible !important;
+            display: block !important;
           }
           .tally-invoice-page {
-            position: static !important;
+            position: relative !important;
             display: block !important;
             width: 100% !important;
             max-width: 100% !important;
@@ -188,6 +186,10 @@ export function InvoicePrintModal({
             break-before: avoid !important;
             break-after: avoid !important;
             break-inside: avoid !important;
+          }
+          .print-hide {
+            display: none !important;
+            visibility: hidden !important;
           }
           .tally-border-box {
             border: 1px solid #000000 !important;
