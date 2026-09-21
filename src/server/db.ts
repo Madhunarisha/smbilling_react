@@ -7,7 +7,7 @@ const DEFAULT_SQLITE_URL = 'sqlitecloud://clhixlrlvk.g2.sqlite.cloud:8860/SMDB?a
 
 function getDbUrl(): string {
   const envUrl = process.env.SQLITECLOUD_URL;
-  if (envUrl && typeof envUrl === 'string' && envUrl.trim().length > 0 && envUrl !== 'undefined' && envUrl !== 'null') {
+  if (envUrl && typeof envUrl === 'string' && envUrl.trim().startsWith('sqlitecloud://')) {
     return envUrl.trim();
   }
   return DEFAULT_SQLITE_URL;

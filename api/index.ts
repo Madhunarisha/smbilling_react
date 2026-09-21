@@ -3,7 +3,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import { apiRouter } from '../src/server/api.js';
 import { initDb, db } from '../src/server/db.js';
 
-if (!process.env.SQLITECLOUD_URL || process.env.SQLITECLOUD_URL === 'undefined') {
+if (!process.env.SQLITECLOUD_URL || !process.env.SQLITECLOUD_URL.startsWith('sqlitecloud://')) {
   process.env.SQLITECLOUD_URL = 'sqlitecloud://clhixlrlvk.g2.sqlite.cloud:8860/SMDB?apikey=m7SpwhsWexbaCs7Z69puOeKQgDY7a3CPbPHN5l8vCOo';
 }
 
