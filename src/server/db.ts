@@ -3,8 +3,10 @@ import bcrypt from 'bcryptjs';
 
 let currentDbInstance: Database | null = null;
 
+const DEFAULT_SQLITE_URL = 'sqlitecloud://clhixlrlvk.g2.sqlite.cloud:8860/SMDB?apikey=m7SpwhsWexbaCs7Z69puOeKQgDY7a3CPbPHN5l8vCOo';
+
 function getDbInstance(): Database {
-  const url = process.env.SQLITECLOUD_URL;
+  const url = process.env.SQLITECLOUD_URL || DEFAULT_SQLITE_URL;
   if (!url) {
     throw new Error('SQLITECLOUD_URL is not set in environment variables.');
   }
@@ -25,7 +27,7 @@ function getDbInstance(): Database {
 }
 
 export function resetDbConnection(): Database {
-  const url = process.env.SQLITECLOUD_URL;
+  const url = process.env.SQLITECLOUD_URL || DEFAULT_SQLITE_URL;
   if (!url) {
     throw new Error('SQLITECLOUD_URL is not set in environment variables.');
   }

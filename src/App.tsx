@@ -147,7 +147,7 @@ function MainApp() {
         />
 
         {/* Dynamic Page Views */}
-        <main className="flex-1 w-full min-w-0 transition-all duration-200">
+        <main className={`flex-1 w-full min-w-0 transition-all duration-200 ${printInvoice ? 'print:hidden' : ''}`}>
           {/* Main -> Dashboard */}
           {currentView === 'dashboard' && (
             <Dashboard

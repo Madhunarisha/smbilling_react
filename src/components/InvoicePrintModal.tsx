@@ -118,39 +118,76 @@ export function InvoicePrintModal({
     ? invoice.igstTotal
     : invoice.cgstTotal + invoice.sgstTotal;
 
-  // Spacer height to give that classic tall ERP invoice appearance
+  // Spacer height to give clean single A4 page fit
   const itemCount = safeItems.length;
-  const spacerHeight = Math.max(30, 160 - itemCount * 35);
+  const spacerHeight = Math.max(10, 70 - itemCount * 12);
 
   const handlePrint = () => {
     window.print();
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/75 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 print:p-0 print:bg-white print:static print:inset-auto">
+    <div className="invoice-modal-overlay fixed inset-0 z-50 overflow-y-auto bg-slate-900/75 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 print:p-0 print:bg-white print:static print:inset-auto print:block">
       <style>{`
         @media print {
           @page {
             size: A4 portrait;
-            margin: 6mm 8mm;
+            margin: 4mm 5mm;
           }
-          body {
+          html, body {
+            height: 100% !important;
+            max-height: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
             background: #ffffff !important;
             color: #000000 !important;
+            overflow: hidden !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
-          .print-hide {
+          header, aside, main, nav, footer, .print-hide {
             display: none !important;
           }
+          #root, #root > div, .min-h-screen {
+            height: auto !important;
+            min-height: 0 !important;
+            background: #ffffff !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+          .invoice-modal-overlay,
+          .invoice-modal-card,
+          .invoice-printable-wrapper {
+            position: static !important;
+            display: block !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            height: auto !important;
+            min-height: 0 !important;
+            max-height: none !important;
+            background: #ffffff !important;
+            box-shadow: none !important;
+            border: none !important;
+            overflow: visible !important;
+          }
           .tally-invoice-page {
+            position: static !important;
+            display: block !important;
             width: 100% !important;
             max-width: 100% !important;
-            margin: 0 !important;
+            height: auto !important;
+            margin: 0 auto !important;
             padding: 0 !important;
             box-shadow: none !important;
             border: none !important;
-            background: transparent !important;
+            background: #ffffff !important;
+            page-break-before: avoid !important;
+            page-break-after: avoid !important;
+            page-break-inside: avoid !important;
+            break-before: avoid !important;
+            break-after: avoid !important;
+            break-inside: avoid !important;
           }
           .tally-border-box {
             border: 1px solid #000000 !important;
@@ -170,7 +207,7 @@ export function InvoicePrintModal({
         }
       `}</style>
 
-      <div className="bg-slate-100 rounded-xl max-w-4xl w-full flex flex-col my-4 shadow-2xl print:shadow-none print:m-0 print:max-w-none print:w-full print:bg-white overflow-hidden">
+      <div className="invoice-modal-card bg-slate-100 rounded-xl max-w-4xl w-full flex flex-col my-4 shadow-2xl print:shadow-none print:m-0 print:max-w-none print:w-full print:bg-white overflow-hidden print:block print:rounded-none">
         {/* Top Modal Toolbar (Hidden on print) */}
         <div className="bg-white px-5 py-3 flex items-center justify-between border-b border-slate-200 print-hide">
           <div className="flex items-center gap-2">
@@ -227,7 +264,7 @@ export function InvoicePrintModal({
         </div>
 
         {/* Printable Area Wrapper */}
-        <div className="overflow-x-auto p-4 sm:p-6 bg-slate-200/60 print:p-0 print:bg-white flex justify-center">
+        <div className="invoice-printable-wrapper overflow-x-auto p-4 sm:p-6 bg-slate-200/60 print:p-0 print:bg-white flex justify-center print:block">
           <div
             ref={printRef}
             className="tally-invoice-page bg-white w-full max-w-[210mm] text-black font-sans text-[11px] leading-tight shadow-md p-4 print:p-0 print:shadow-none"
