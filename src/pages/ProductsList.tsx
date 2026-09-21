@@ -232,7 +232,21 @@ export function ProductsList({ onOpenStockAdjustment }: ProductsListProps) {
 
         {/* Categories Bar */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
-          {['All', ...categories.map((c) => c.name)].map((cat) => (
+          {Array.from(
+            new Set([
+              'All',
+              'Car Batteries',
+              'Inverter Batteries',
+              'Two-Wheeler Batteries',
+              'Solar Batteries',
+              'Inverters / UPS',
+              'Auto Electricals',
+              'Battery Accessories',
+              'Lubricants & Oils',
+              'General Spare Parts',
+              ...categories.map((c) => c.name),
+            ])
+          ).map((cat) => (
             <button
               key={cat}
               type="button"
