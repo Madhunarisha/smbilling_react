@@ -5,11 +5,16 @@ let currentDbInstance: Database | null = null;
 
 const DEFAULT_SQLITE_URL = 'sqlitecloud://clhixlrlvk.g2.sqlite.cloud:8860/SMDB?apikey=m7SpwhsWexbaCs7Z69puOeKQgDY7a3CPbPHN5l8vCOo';
 
-function getDbInstance(): Database {
-  const url = process.env.SQLITECLOUD_URL || DEFAULT_SQLITE_URL;
-  if (!url) {
-    throw new Error('SQLITECLOUD_URL is not set in environment variables.');
+function getDbUrl(): string {
+  const envUrl = process.env.SQLITECLOUD_URL;
+  if (envUrl && typeof envUrl === 'string' && envUrl.trim().length > 0 && envUrl !== 'undefined' && envUrl !== 'null') {
+    return envUrl.trim();
   }
+  return DEFAULT_SQLITE_URL;
+}
+
+function getDbInstance(): Database {
+  const url = getDbUrl();
 
   const conn = (currentDbInstance as any)?.connection;
   if (!currentDbInstance || (conn && conn.connected === false)) {
@@ -27,10 +32,7 @@ function getDbInstance(): Database {
 }
 
 export function resetDbConnection(): Database {
-  const url = process.env.SQLITECLOUD_URL || DEFAULT_SQLITE_URL;
-  if (!url) {
-    throw new Error('SQLITECLOUD_URL is not set in environment variables.');
-  }
+  const url = getDbUrl();
   if (currentDbInstance) {
     try {
       currentDbInstance.close();
