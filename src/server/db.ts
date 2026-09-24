@@ -336,6 +336,44 @@ export async function initDb(): Promise<void> {
   `;
 
   await db.sql`
+    CREATE TABLE IF NOT EXISTS purchases (
+      id TEXT PRIMARY KEY,
+      billNumber TEXT NOT NULL,
+      supplierId TEXT NOT NULL,
+      supplierName TEXT NOT NULL,
+      billDate TEXT NOT NULL,
+      subtotal REAL NOT NULL,
+      taxAmount REAL NOT NULL,
+      grandTotal REAL NOT NULL,
+      paidAmount REAL NOT NULL,
+      balanceAmount REAL NOT NULL,
+      paymentMode TEXT NOT NULL,
+      paymentStatus TEXT NOT NULL,
+      notes TEXT,
+      createdBy TEXT NOT NULL,
+      createdAt TEXT NOT NULL
+    )
+  `;
+
+  await db.sql`
+    CREATE TABLE IF NOT EXISTS purchase_items (
+      id TEXT PRIMARY KEY,
+      purchaseId TEXT NOT NULL,
+      productId TEXT NOT NULL,
+      productName TEXT NOT NULL,
+      sku TEXT NOT NULL,
+      quantity REAL NOT NULL,
+      unit TEXT NOT NULL,
+      purchaseRate REAL NOT NULL,
+      taxableAmount REAL NOT NULL,
+      gstRate REAL NOT NULL,
+      gstAmount REAL NOT NULL,
+      totalAmount REAL NOT NULL,
+      FOREIGN KEY (purchaseId) REFERENCES purchases(id) ON DELETE CASCADE
+    )
+  `;
+
+  await db.sql`
     CREATE TABLE IF NOT EXISTS returns (
       id TEXT PRIMARY KEY,
       returnNumber TEXT NOT NULL,

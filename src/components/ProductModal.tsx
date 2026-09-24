@@ -417,44 +417,20 @@ export function ProductModal({
             </div>
           </div>
 
-          {/* Stock & Supplier */}
+          {/* Packaging Unit & Primary Supplier */}
           <div className="pt-2 border-t border-slate-200">
             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
-              Stock &amp; Supplier Information
+              Unit &amp; Supplier Information
             </h4>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {!product && (
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Opening Stock</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={formData.openingStock}
-                    onChange={(e) => setFormData({ ...formData, openingStock: parseInt(e.target.value, 10) || 0 })}
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 font-mono"
-                  />
-                </div>
-              )}
-
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Min Stock Alert Level</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={formData.minStockLevel}
-                  onChange={(e) => setFormData({ ...formData, minStockLevel: parseInt(e.target.value, 10) || 1 })}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Unit</label>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Unit of Measurement</label>
                 <select
                   value={formData.unit}
                   onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
                   className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 bg-white"
                 >
-                  <option value="Nos">Nos</option>
+                  <option value="Nos">Nos (Units)</option>
                   <option value="Sets">Sets</option>
                   <option value="Litres">Litres</option>
                   <option value="Pcs">Pcs</option>
@@ -464,13 +440,13 @@ export function ProductModal({
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Primary Supplier</label>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Primary Supplier / Brand Depot</label>
                 <select
                   value={formData.supplierId}
                   onChange={handleSupplierChange}
                   className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 bg-white"
                 >
-                  <option value="">Select supplier...</option>
+                  <option value="">Select primary supplier...</option>
                   {suppliers.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name}

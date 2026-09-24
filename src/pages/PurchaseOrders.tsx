@@ -12,11 +12,13 @@ import {
   Calendar,
   Eye,
   Trash2,
+  RefreshCw,
 } from 'lucide-react';
 import { Supplier, Product } from '../types/index.js';
 import { api } from '../services/api.js';
 import { useToast } from '../context/ToastContext.js';
 import { formatINR } from '../utils/formatters.js';
+import { AddPurchaseModal } from '../components/AddPurchaseModal.js';
 
 interface PurchaseOrderItem {
   id: string;
@@ -30,25 +32,14 @@ interface PurchaseOrderItem {
   paymentStatus: 'Paid' | 'Pending';
 }
 
-interface PurchaseBillItem {
-  id: string;
-  billNumber: string;
-  supplierName: string;
-  billDate: string;
-  itemsCount: number;
-  totalTaxable: number;
-  taxAmount: number;
-  grandTotal: number;
-  paidAmount: number;
-  status: 'Paid' | 'Partial' | 'Unpaid';
-}
-
 export function PurchaseOrders({ initialTab = 'orders' }: { initialTab?: 'orders' | 'purchases' | 'return' }) {
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<'orders' | 'purchases' | 'return'>(initialTab);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isAddPurchaseModalOpen, setIsAddPurchaseModalOpen] = useState(false);
+  const [loadingPurchases, setLoadingPurchases] = useState(false);
 
   // Purchase Orders Data
   const [orders, setOrders] = useState<PurchaseOrderItem[]>([
@@ -87,45 +78,7 @@ export function PurchaseOrders({ initialTab = 'orders' }: { initialTab?: 'orders
     },
   ]);
 
-  // Purchases Inward Data
-  const [purchases, setPurchases] = useState<PurchaseBillItem[]>([
-    {
-      id: 'pb-201',
-      billNumber: 'EXD-INV-9921',
-      supplierName: 'Exide Industries Ltd - Regional Depot',
-      billDate: '2026-09-05',
-      itemsCount: 25,
-      totalTaxable: 75000,
-      taxAmount: 21000,
-      grandTotal: 96000,
-      paidAmount: 61000,
-      status: 'Partial',
-    },
-    {
-      id: 'pb-202',
-      billNumber: 'AMR-DL-5541',
-      supplierName: 'Amaron Batteries - Amara Raja Depot',
-      billDate: '2026-09-02',
-      itemsCount: 18,
-      totalTaxable: 45000,
-      taxAmount: 12600,
-      grandTotal: 57600,
-      paidAmount: 57600,
-      status: 'Paid',
-    },
-    {
-      id: 'pb-203',
-      billNumber: 'CST-LUB-8812',
-      supplierName: 'Castrol India Lubricants Distributor',
-      billDate: '2026-08-28',
-      itemsCount: 40,
-      totalTaxable: 52000,
-      taxAmount: 9360,
-      grandTotal: 61360,
-      paidAmount: 61360,
-      status: 'Paid',
-    },
-  ]);
+  const [purchases, setPurchases] = useState<any[]>([]);
 
   // Purchase Returns Data
   const [returns, setReturns] = useState([
@@ -151,18 +104,63 @@ export function PurchaseOrders({ initialTab = 'orders' }: { initialTab?: 'orders
     },
   ]);
 
-  useEffect(() => {
-    async function loadMetadata() {
-      try {
-        const [sups, prods] = await Promise.all([api.getSuppliers(), api.getProducts()]);
-        setSuppliers(sups);
-        setProducts(prods);
-      } catch {
-        // quiet
+  const loadAllData = async () => {
+    try {
+      setLoadingPurchases(true);
+      const [sups, prods, purs] = await Promise.all([
+        api.getSuppliers(),
+        api.getProducts(),
+        api.getPurchases().catch(() => []),
+      ]);
+      setSuppliers(sups);
+      setProducts(prods);
+      if (purs && purs.length > 0) {
+        setPurchases(purs);
+      } else {
+        // Fallback demo data if database hasn't recorded purchases yet
+        setPurchases([
+          {
+            id: 'pb-201',
+            billNumber: 'EXD-INV-9921',
+            supplierName: 'Exide Industries Ltd - Regional Depot',
+            billDate: '2026-09-05',
+            items: [{ productName: 'Exide Batteries' }],
+            subtotal: 75000,
+            taxAmount: 21000,
+            grandTotal: 96000,
+            paidAmount: 61000,
+            paymentStatus: 'Partial',
+          },
+          {
+            id: 'pb-202',
+            billNumber: 'AMR-DL-5541',
+            supplierName: 'Amaron Batteries - Amara Raja Depot',
+            billDate: '2026-09-02',
+            items: [{ productName: 'Amaron Batteries' }],
+            subtotal: 45000,
+            taxAmount: 12600,
+            grandTotal: 57600,
+            paidAmount: 57600,
+            paymentStatus: 'Paid',
+          },
+        ]);
       }
+    } catch {
+      // quiet
+    } finally {
+      setLoadingPurchases(false);
     }
-    loadMetadata();
+  };
+
+  useEffect(() => {
+    loadAllData();
   }, []);
+
+  const handleSavePurchase = async (purchaseData: any) => {
+    await api.createPurchase(purchaseData);
+    showToast(`Purchase bill ${purchaseData.billNumber} recorded & stock updated!`, 'success');
+    loadAllData();
+  };
 
   const handleMarkReceived = (orderId: string) => {
     setOrders((prev) =>
@@ -315,6 +313,39 @@ export function PurchaseOrders({ initialTab = 'orders' }: { initialTab?: 'orders
       {/* TAB 2: PURCHASES (BILLS) */}
       {activeTab === 'purchases' && (
         <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+            <div className="relative w-full sm:w-72">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search vendor bill or supplier..."
+                className="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-300 rounded-lg"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+              <button
+                type="button"
+                onClick={loadAllData}
+                className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg border border-slate-200"
+                title="Refresh Purchases"
+              >
+                <RefreshCw className="w-4 h-4" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsAddPurchaseModalOpen(true)}
+                className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md transition-all"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ Add Purchased Stock (Inward Bill)</span>
+              </button>
+            </div>
+          </div>
+
           <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-700 font-semibold">
@@ -330,30 +361,40 @@ export function PurchaseOrders({ initialTab = 'orders' }: { initialTab?: 'orders
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {purchases.map((pb) => (
-                  <tr key={pb.id} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="py-3 px-4 font-mono font-bold text-slate-900">
-                      {pb.billNumber}
-                    </td>
-                    <td className="py-3 px-3 font-semibold text-slate-900">{pb.supplierName}</td>
-                    <td className="py-3 px-3 text-slate-600">{pb.billDate}</td>
-                    <td className="py-3 px-3 font-mono text-slate-600">{formatINR(pb.totalTaxable)}</td>
-                    <td className="py-3 px-3 font-mono text-slate-600">{formatINR(pb.taxAmount)}</td>
-                    <td className="py-3 px-3 font-mono font-bold text-slate-900">{formatINR(pb.grandTotal)}</td>
-                    <td className="py-3 px-3 font-mono font-bold text-emerald-700">{formatINR(pb.paidAmount)}</td>
-                    <td className="py-3 px-3">
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          pb.status === 'Paid'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-amber-100 text-amber-800'
-                        }`}
-                      >
-                        {pb.status}
-                      </span>
+                {purchases.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-8 text-center text-slate-400">
+                      No purchase bills recorded yet. Click "+ Add Purchased Stock" above.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  purchases.map((pb) => (
+                    <tr key={pb.id} className="hover:bg-slate-50/70 transition-colors">
+                      <td className="py-3 px-4 font-mono font-bold text-slate-900">
+                        {pb.billNumber}
+                      </td>
+                      <td className="py-3 px-3 font-semibold text-slate-900">{pb.supplierName}</td>
+                      <td className="py-3 px-3 text-slate-600">{pb.billDate}</td>
+                      <td className="py-3 px-3 font-mono text-slate-600">{formatINR(pb.subtotal || pb.totalTaxable || 0)}</td>
+                      <td className="py-3 px-3 font-mono text-slate-600">{formatINR(pb.taxAmount || 0)}</td>
+                      <td className="py-3 px-3 font-mono font-bold text-slate-900">{formatINR(pb.grandTotal || 0)}</td>
+                      <td className="py-3 px-3 font-mono font-bold text-emerald-700">{formatINR(pb.paidAmount || 0)}</td>
+                      <td className="py-3 px-3">
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            pb.paymentStatus === 'Paid' || pb.status === 'Paid'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : pb.paymentStatus === 'Partial' || pb.status === 'Partial'
+                              ? 'bg-amber-100 text-amber-800'
+                              : 'bg-rose-100 text-rose-800'
+                          }`}
+                        >
+                          {pb.paymentStatus || pb.status || 'Unpaid'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -397,6 +438,15 @@ export function PurchaseOrders({ initialTab = 'orders' }: { initialTab?: 'orders
           </div>
         </div>
       )}
+
+      {/* Add Purchase Modal */}
+      <AddPurchaseModal
+        isOpen={isAddPurchaseModalOpen}
+        onClose={() => setIsAddPurchaseModalOpen(false)}
+        onSave={handleSavePurchase}
+        suppliers={suppliers}
+        products={products}
+      />
     </div>
   );
 }

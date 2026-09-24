@@ -11,15 +11,17 @@ import {
   FileCheck,
 } from 'lucide-react';
 import { api } from '../services/api.js';
-import { Product, StockTransaction } from '../types/index.js';
+import { Product, StockTransaction, Supplier } from '../types/index.js';
 import { formatDate, formatDateTime } from '../utils/formatters.js';
 import { useToast } from '../context/ToastContext.js';
 import { StockAdjustmentModal } from '../components/StockAdjustmentModal.js';
+import { AddPurchaseModal } from '../components/AddPurchaseModal.js';
 
 export function StockManagement() {
   const { showToast } = useToast();
 
   const [products, setProducts] = useState<Product[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [transactions, setTransactions] = useState<StockTransaction[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -27,19 +29,22 @@ export function StockManagement() {
   const [selectedType, setSelectedType] = useState('all');
   const [selectedProductId, setSelectedProductId] = useState('');
   const [isStockModalOpen, setIsStockModalOpen] = useState(false);
+  const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
   const [targetProduct, setTargetProduct] = useState<Product | null>(null);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const [prods, txs] = await Promise.all([
+      const [prods, sups, txs] = await Promise.all([
         api.getProducts(),
+        api.getSuppliers().catch(() => []),
         api.getStockHistory({
           productId: selectedProductId || undefined,
           type: selectedType === 'all' ? undefined : selectedType,
         }),
       ]);
       setProducts(prods);
+      setSuppliers(sups);
       setTransactions(txs);
     } catch (err: any) {
       showToast(err.message || 'Failed to load stock movements', 'error');
@@ -64,7 +69,13 @@ export function StockManagement() {
     loadData();
   };
 
-  const lowStockProducts = products.filter((p) => p.currentStock <= p.minStockLevel);
+  const handleSavePurchase = async (purchaseData: any) => {
+    await api.createPurchase(purchaseData);
+    showToast(`Purchase bill ${purchaseData.billNumber} recorded & stock inwarded!`, 'success');
+    loadData();
+  };
+
+  const lowStockProducts = products.filter((p) => p.currentStock <= (p.minStockLevel || 5));
 
   return (
     <div className="p-4 sm:p-6 space-y-5 max-w-7xl mx-auto">
@@ -75,7 +86,7 @@ export function StockManagement() {
             Stock Management &amp; Movements
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Audit movements, track battery inflow/outflow, and manage replenishments
+            Audit movements, track battery inflow/outflow, and manage inward purchased stock
           </p>
         </div>
 
@@ -91,14 +102,23 @@ export function StockManagement() {
 
           <button
             type="button"
+            onClick={() => setIsPurchaseModalOpen(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>+ Add Purchased Stock</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => {
               setTargetProduct(null);
               setIsStockModalOpen(true);
             }}
-            className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-black text-xs rounded-xl shadow-md shadow-red-950/20 transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>Record Movement / Audit</span>
+            <span>Audit / Adjust</span>
           </button>
         </div>
       </div>
@@ -294,6 +314,15 @@ export function StockManagement() {
         products={products}
         selectedProduct={targetProduct}
         onSave={handleRecordStock}
+      />
+
+      {/* Inward Purchased Stock Modal */}
+      <AddPurchaseModal
+        isOpen={isPurchaseModalOpen}
+        onClose={() => setIsPurchaseModalOpen(false)}
+        onSave={handleSavePurchase}
+        suppliers={suppliers}
+        products={products}
       />
     </div>
   );

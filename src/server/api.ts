@@ -1216,6 +1216,178 @@ apiRouter.post('/stock/adjustment', authenticateToken, requireAdmin, async (req:
 });
 
 // -------------------------------------------------------------
+// PURCHASES MANAGEMENT (Inward Purchased Stock Entry)
+// -------------------------------------------------------------
+
+apiRouter.get('/purchases', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const purchases = (await db.sql`SELECT * FROM purchases ORDER BY billDate DESC, createdAt DESC`) as any[];
+    for (const p of purchases) {
+      const items = (await db.sql`SELECT * FROM purchase_items WHERE purchaseId = ${p.id}`) as any[];
+      p.items = items || [];
+    }
+    res.json(purchases);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+apiRouter.post('/purchases', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const {
+      billNumber,
+      supplierId,
+      supplierName,
+      billDate,
+      items,
+      paymentMode,
+      paidAmount,
+      notes,
+    } = req.body;
+
+    if (!supplierId || !supplierName) {
+      return res.status(400).json({ error: 'Supplier selection is required.' });
+    }
+    if (!billNumber || !billNumber.trim()) {
+      return res.status(400).json({ error: 'Vendor Bill / Invoice Number is required.' });
+    }
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: 'At least one purchased item is required.' });
+    }
+
+    let subtotal = 0;
+    let taxAmount = 0;
+    const processedItems: any[] = [];
+
+    for (const item of items) {
+      const qty = Number(item.quantity) || 0;
+      const rate = Number(item.purchaseRate) || 0;
+      const gstRate = Number(item.gstRate) || 0;
+
+      if (qty <= 0) {
+        return res.status(400).json({ error: `Invalid quantity for item "${item.productName || item.productId}".` });
+      }
+
+      const lineTaxable = qty * rate;
+      const lineGst = (lineTaxable * gstRate) / 100;
+      const lineTotal = lineTaxable + lineGst;
+
+      subtotal += lineTaxable;
+      taxAmount += lineGst;
+
+      processedItems.push({
+        id: `pitem-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+        productId: item.productId,
+        productName: item.productName || 'Product',
+        sku: item.sku || 'SKU',
+        quantity: qty,
+        unit: item.unit || 'Nos',
+        purchaseRate: rate,
+        taxableAmount: lineTaxable,
+        gstRate: gstRate,
+        gstAmount: lineGst,
+        totalAmount: lineTotal,
+      });
+    }
+
+    const grandTotal = Math.round(subtotal + taxAmount);
+    const paid = Math.max(0, Number(paidAmount) || 0);
+    const balance = Math.max(0, grandTotal - paid);
+    let paymentStatus = 'Unpaid';
+    if (paid >= grandTotal) {
+      paymentStatus = 'Paid';
+    } else if (paid > 0) {
+      paymentStatus = 'Partial';
+    }
+
+    const purchaseId = `pur-${Date.now()}`;
+    const now = new Date().toISOString();
+    const formattedBillDate = billDate || now.split('T')[0];
+
+    // Insert purchase record
+    await db.sql`
+      INSERT INTO purchases (id, billNumber, supplierId, supplierName, billDate, subtotal, taxAmount, grandTotal, paidAmount, balanceAmount, paymentMode, paymentStatus, notes, createdBy, createdAt)
+      VALUES (${purchaseId}, ${billNumber.trim()}, ${supplierId}, ${supplierName}, ${formattedBillDate}, ${subtotal}, ${taxAmount}, ${grandTotal}, ${paid}, ${balance}, ${paymentMode || 'Cash'}, ${paymentStatus}, ${notes?.trim() || null}, ${req.user?.name || 'Staff'}, ${now})
+    `;
+
+    // Process line items & update physical stock + stock transactions
+    for (const pItem of processedItems) {
+      await db.sql`
+        INSERT INTO purchase_items (id, purchaseId, productId, productName, sku, quantity, unit, purchaseRate, taxableAmount, gstRate, gstAmount, totalAmount)
+        VALUES (${pItem.id}, ${purchaseId}, ${pItem.productId}, ${pItem.productName}, ${pItem.sku}, ${pItem.quantity}, ${pItem.unit}, ${pItem.purchaseRate}, ${pItem.taxableAmount}, ${pItem.gstRate}, ${pItem.gstAmount}, ${pItem.totalAmount})
+      `;
+
+      // Update or create product in catalog
+      let prodRows = await db.sql`SELECT * FROM products WHERE id = ${pItem.productId} OR sku = ${pItem.sku}`;
+      if (!prodRows || (prodRows as any[]).length === 0) {
+        // Auto-create new product in database catalog so it connects to Invoice Select Product field
+        const newProdId = pItem.productId || `prod-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+        const sellingPrice = Math.round((pItem.purchaseRate || 0) * 1.25); // Default 25% margin
+        await db.sql`
+          INSERT INTO products (id, sku, name, category, brand, modelNumber, barcode, description, purchasePrice, sellingPrice, mrp, gstRate, discountPercent, openingStock, currentStock, minStockLevel, unit, supplierId, supplierName, warrantyPeriod, status, createdAt, updatedAt)
+          VALUES (${newProdId}, ${pItem.sku || 'SKU-' + Date.now()}, ${pItem.productName}, 'Automotive Parts', 'General', NULL, NULL, 'Purchased Stock Item', ${pItem.purchaseRate}, ${sellingPrice}, ${sellingPrice}, ${pItem.gstRate || 18}, 0, 0, ${pItem.quantity}, 5, ${pItem.unit || 'Nos'}, ${supplierId}, ${supplierName}, '12 Months', 'active', ${now}, ${now})
+        `;
+        prodRows = await db.sql`SELECT * FROM products WHERE id = ${newProdId}`;
+      }
+
+      if (prodRows && (prodRows as any[]).length > 0) {
+        const prod = (prodRows as any[])[0];
+        const prevStock = prod.currentStock;
+        const newStock = prevStock + pItem.quantity;
+
+        await db.sql`UPDATE products SET currentStock = ${newStock}, purchasePrice = ${pItem.purchaseRate}, updatedAt = ${now} WHERE id = ${prod.id}`;
+
+        // Insert stock transaction record
+        const stkId = `stk-${Date.now()}-${prod.id}`;
+        await db.sql`
+          INSERT INTO stock_transactions (id, productId, productName, type, quantity, previousStock, updatedStock, referenceNo, userId, userName, remarks, date)
+          VALUES (${stkId}, ${prod.id}, ${prod.name}, 'purchase', ${pItem.quantity}, ${prevStock}, ${newStock}, ${billNumber.trim()}, ${req.user?.id || 'staff'}, ${req.user?.name || 'Staff'}, ${'Purchased Inward Stock (Bill: ' + billNumber.trim() + ')'}, ${now})
+        `;
+      }
+    }
+
+    // Update Supplier Ledger and currentPayable
+    const supRows = await db.sql`SELECT * FROM suppliers WHERE id = ${supplierId}`;
+    if (supRows && (supRows as any[]).length > 0) {
+      const supplier = (supRows as any[])[0];
+      const newPayable = (supplier.currentPayable || 0) + balance;
+
+      await db.sql`UPDATE suppliers SET currentPayable = ${newPayable} WHERE id = ${supplierId}`;
+
+      // Credit entry for bill
+      await db.sql`
+        INSERT INTO supplier_ledgers (id, supplierId, supplierName, date, description, type, referenceNo, debit, credit, balance, notes)
+        VALUES (${'sld-' + Date.now() + '-pur'}, ${supplierId}, ${supplierName}, ${now}, ${'Purchase Bill ' + billNumber.trim()}, 'purchase', ${billNumber.trim()}, 0, ${grandTotal}, ${newPayable}, ${notes?.trim() || ''})
+      `;
+
+      // Debit entry for paid amount if any
+      if (paid > 0) {
+        await db.sql`
+          INSERT INTO supplier_ledgers (id, supplierId, supplierName, date, description, type, referenceNo, debit, credit, balance, notes)
+          VALUES (${'sld-' + Date.now() + '-pay'}, ${supplierId}, ${supplierName}, ${now}, ${'Payment Made for Bill ' + billNumber.trim()}, 'payment', ${billNumber.trim()}, ${paid}, 0, ${newPayable}, ${'Payment Mode: ' + (paymentMode || 'Cash')})
+        `;
+      }
+    }
+
+    await logAudit(req.user?.id || 'staff', req.user?.name || 'Staff', 'PURCHASE_RECORDED', 'Purchases', `Recorded purchase bill ${billNumber.trim()} from ${supplierName} (Total: ₹${grandTotal})`, purchaseId);
+
+    res.status(201).json({
+      id: purchaseId,
+      billNumber: billNumber.trim(),
+      supplierId,
+      supplierName,
+      billDate: formattedBillDate,
+      grandTotal,
+      paidAmount: paid,
+      paymentStatus,
+      items: processedItems,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to record purchase bill.' });
+  }
+});
+
+// -------------------------------------------------------------
 // 9. LEDGER MANAGEMENT
 // -------------------------------------------------------------
 

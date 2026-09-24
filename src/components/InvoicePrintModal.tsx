@@ -134,33 +134,48 @@ export function InvoicePrintModal({
             size: A4 portrait;
             margin: 4mm 5mm;
           }
-          *, *::before, *::after {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
           html, body {
-            width: 100% !important;
             height: auto !important;
-            min-height: 0 !important;
+            max-height: none !important;
             margin: 0 !important;
             padding: 0 !important;
             background: #ffffff !important;
             color: #000000 !important;
             overflow: visible !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
+          /* Hide non-printable content */
           body * {
             visibility: hidden !important;
           }
+          /* Elevate and show printable invoice */
           .invoice-printable-wrapper,
-          .invoice-printable-wrapper * {
+          .invoice-printable-wrapper *,
+          .tally-invoice-page,
+          .tally-invoice-page * {
             visibility: visible !important;
+          }
+          .invoice-modal-overlay,
+          .invoice-modal-card {
+            position: static !important;
+            display: block !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            height: auto !important;
+            min-height: 0 !important;
+            max-height: none !important;
+            background: #ffffff !important;
+            box-shadow: none !important;
+            border: none !important;
+            overflow: visible !important;
           }
           .invoice-printable-wrapper {
             position: absolute !important;
             left: 0 !important;
             top: 0 !important;
             width: 100% !important;
-            max-width: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
             background: #ffffff !important;
@@ -170,24 +185,19 @@ export function InvoicePrintModal({
             display: block !important;
           }
           .tally-invoice-page {
-            position: relative !important;
-            display: block !important;
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
             width: 100% !important;
             max-width: 100% !important;
             height: auto !important;
-            margin: 0 auto !important;
+            margin: 0 !important;
             padding: 0 !important;
             box-shadow: none !important;
             border: none !important;
             background: #ffffff !important;
-            page-break-before: avoid !important;
-            page-break-after: avoid !important;
-            page-break-inside: avoid !important;
-            break-before: avoid !important;
-            break-after: avoid !important;
-            break-inside: avoid !important;
           }
-          .print-hide {
+          .print-hide, .print\:hidden {
             display: none !important;
             visibility: hidden !important;
           }
@@ -217,13 +227,12 @@ export function InvoicePrintModal({
               Tax Invoice Preview
             </h2>
             <span
-              className={`text-xs px-2 py-0.5 rounded font-bold uppercase ${
-                invoice.paymentStatus === 'Paid'
+              className={`text-xs px-2 py-0.5 rounded font-bold uppercase ${invoice.paymentStatus === 'Paid'
                   ? 'bg-emerald-100 text-emerald-700'
                   : invoice.paymentStatus === 'Unpaid'
-                  ? 'bg-red-100 text-red-700'
-                  : 'bg-amber-100 text-amber-700'
-              }`}
+                    ? 'bg-red-100 text-red-700'
+                    : 'bg-amber-100 text-amber-700'
+                }`}
             >
               {invoice.paymentStatus}
             </span>
@@ -289,10 +298,9 @@ export function InvoicePrintModal({
                       {biz.tradeName || biz.businessName}
                     </div>
                     <div className="text-[10.5px] uppercase text-slate-900 leading-tight">
-                      NO : 5/1 ST-3, MELAPUDU THERU <br />
-                      THIMMARASANAYAKKANUR
-                      <br />
-                      
+                      NO : 5/1 ST-3, MELAPUDU THERU, <br />
+                      THIMMARASANAYAKKANUR <br />
+                      AUNDIPATTI
                       <br />
                       THENI - 625531
                     </div>
@@ -521,7 +529,7 @@ export function InvoicePrintModal({
                       const qty = Number(item.quantity) || 1;
                       const taxableAmt =
                         item.taxableAmount !== undefined &&
-                        item.taxableAmount !== null
+                          item.taxableAmount !== null
                           ? item.taxableAmount
                           : item.rate * qty;
                       const taxableRate =
@@ -659,23 +667,23 @@ export function InvoicePrintModal({
                     {Boolean(
                       invoice.roundOff && Math.abs(invoice.roundOff) >= 0.01
                     ) && (
-                      <tr className="align-top">
-                        <td className="tally-border-r border-r border-black py-0.5 px-1 text-center"></td>
-                        <td className="tally-border-r border-r border-black py-0.5 px-1.5 text-right italic font-bold pr-4">
-                          Round Off
-                        </td>
-                        <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
-                        <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
-                        <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
-                        <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
-                        <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
-                        <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
-                        <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
-                        <td className="py-0.5 px-1.5 text-right font-bold">
-                          {formatTallyCurrency(invoice.roundOff)}
-                        </td>
-                      </tr>
-                    )}
+                        <tr className="align-top">
+                          <td className="tally-border-r border-r border-black py-0.5 px-1 text-center"></td>
+                          <td className="tally-border-r border-r border-black py-0.5 px-1.5 text-right italic font-bold pr-4">
+                            Round Off
+                          </td>
+                          <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
+                          <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
+                          <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
+                          <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
+                          <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
+                          <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
+                          <td className="tally-border-r border-r border-black py-0.5 px-1"></td>
+                          <td className="py-0.5 px-1.5 text-right font-bold">
+                            {formatTallyCurrency(invoice.roundOff)}
+                          </td>
+                        </tr>
+                      )}
 
                     {/* Spacer Row ensuring the vertical column lines run all the way down to Total */}
                     <tr style={{ height: `${spacerHeight}px` }}>

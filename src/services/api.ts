@@ -198,6 +198,14 @@ export const api = {
       method: 'DELETE',
     }),
 
+  // Purchases (Inward Purchased Stock)
+  getPurchases: () => request<any[]>('/purchases'),
+  createPurchase: (data: any) =>
+    request<any>('/purchases', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
   // Invoices
   getInvoices: (params?: { q?: string; status?: string; fromDate?: string; toDate?: string }) => {
     const searchParams = new URLSearchParams();

@@ -107,6 +107,39 @@ export interface Supplier {
   createdAt: string;
 }
 
+export interface PurchaseItem {
+  id?: string;
+  productId: string;
+  productName: string;
+  sku: string;
+  quantity: number;
+  unit: string;
+  purchaseRate: number;
+  taxableAmount: number;
+  gstRate: number;
+  gstAmount: number;
+  totalAmount: number;
+}
+
+export interface Purchase {
+  id: string;
+  billNumber: string;
+  supplierId: string;
+  supplierName: string;
+  billDate: string;
+  items: PurchaseItem[];
+  subtotal: number;
+  taxAmount: number;
+  grandTotal: number;
+  paidAmount: number;
+  balanceAmount: number;
+  paymentMode: PaymentMode;
+  paymentStatus: 'Paid' | 'Partial' | 'Unpaid';
+  notes?: string;
+  createdBy?: string;
+  createdAt?: string;
+}
+
 export interface InvoiceItem {
   id: string;
   productId: string;
