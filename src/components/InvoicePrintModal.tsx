@@ -120,7 +120,7 @@ export function InvoicePrintModal({
 
   // Spacer height to give clean single A4 page fit
   const itemCount = safeItems.length;
-  const spacerHeight = Math.max(10, 70 - itemCount * 12);
+  const spacerHeight = Math.max(0, 15 - itemCount * 3);
 
   const handlePrint = () => {
     window.print();
@@ -132,10 +132,11 @@ export function InvoicePrintModal({
         @media print {
           @page {
             size: A4 portrait;
-            margin: 4mm 5mm;
+            margin: 3mm 4mm !important;
           }
-          html, body {
+          html, body, #root, #root > div, .min-h-screen, .h-screen, .overflow-hidden, .overflow-y-auto {
             height: auto !important;
+            min-height: 0 !important;
             max-height: none !important;
             margin: 0 !important;
             padding: 0 !important;
@@ -145,61 +146,78 @@ export function InvoicePrintModal({
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
-          /* Hide non-printable content */
-          body * {
+          header, aside, main, nav, footer, .print-hide, .print\:hidden, div.print-hide, div.print\:hidden {
+            display: none !important;
             visibility: hidden !important;
-          }
-          /* Elevate and show printable invoice */
-          .invoice-printable-wrapper,
-          .invoice-printable-wrapper *,
-          .tally-invoice-page,
-          .tally-invoice-page * {
-            visibility: visible !important;
-          }
-          .invoice-modal-overlay,
-          .invoice-modal-card {
-            position: static !important;
-            display: block !important;
+            height: 0 !important;
+            max-height: 0 !important;
             margin: 0 !important;
             padding: 0 !important;
+            overflow: hidden !important;
+            border: none !important;
+          }
+          .invoice-modal-overlay {
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            inset: 0 !important;
+            display: block !important;
+            background: #ffffff !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            overflow: visible !important;
             width: 100% !important;
             height: auto !important;
-            min-height: 0 !important;
-            max-height: none !important;
+            z-index: 99999 !important;
+          }
+          .invoice-modal-card {
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            display: block !important;
             background: #ffffff !important;
+            padding: 0 !important;
+            margin: 0 !important;
             box-shadow: none !important;
             border: none !important;
+            border-radius: 0 !important;
+            max-width: none !important;
+            width: 100% !important;
+            height: auto !important;
             overflow: visible !important;
           }
           .invoice-printable-wrapper {
             position: absolute !important;
-            left: 0 !important;
             top: 0 !important;
-            width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
+            left: 0 !important;
+            display: block !important;
             background: #ffffff !important;
+            padding: 0 !important;
+            margin: 0 !important;
             box-shadow: none !important;
             border: none !important;
             overflow: visible !important;
-            display: block !important;
+            width: 100% !important;
+            height: auto !important;
           }
           .tally-invoice-page {
             position: absolute !important;
-            left: 0 !important;
             top: 0 !important;
+            left: 0 !important;
+            display: block !important;
+            background: #ffffff !important;
+            color: #000000 !important;
             width: 100% !important;
             max-width: 100% !important;
-            height: auto !important;
             margin: 0 !important;
             padding: 0 !important;
             box-shadow: none !important;
             border: none !important;
-            background: #ffffff !important;
-          }
-          .print-hide, .print\:hidden {
-            display: none !important;
-            visibility: hidden !important;
+            overflow: visible !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+            page-break-after: avoid !important;
+            break-after: avoid !important;
           }
           .tally-border-box {
             border: 1px solid #000000 !important;
@@ -221,7 +239,7 @@ export function InvoicePrintModal({
 
       <div className="invoice-modal-card bg-slate-100 rounded-xl max-w-4xl w-full flex flex-col my-4 shadow-2xl print:shadow-none print:m-0 print:max-w-none print:w-full print:bg-white overflow-hidden print:block print:rounded-none">
         {/* Top Modal Toolbar (Hidden on print) */}
-        <div className="bg-white px-5 py-3 flex items-center justify-between border-b border-slate-200 print-hide">
+        <div className="bg-white px-5 py-3 flex items-center justify-between border-b border-slate-200 print-hide print:hidden">
           <div className="flex items-center gap-2">
             <h2 className="text-base font-bold text-slate-800">
               Tax Invoice Preview
@@ -953,11 +971,11 @@ export function InvoicePrintModal({
                   </div>
 
                   {/* Signatory Box */}
-                  <div className="pt-4 flex flex-col items-end">
+                  <div className="pt-2 flex flex-col items-end">
                     <div className="font-bold text-[10.5px] uppercase">
                       for {biz.tradeName || biz.businessName}
                     </div>
-                    <div className="h-10"></div>
+                    <div className="h-6"></div>
                     <div className="font-bold text-[10.5px]">
                       Authorised Signatory
                     </div>
@@ -979,7 +997,7 @@ export function InvoicePrintModal({
         </div>
 
         {/* Action Buttons (Hidden on Print) */}
-        <div className="bg-white px-5 py-3 border-t border-slate-200 flex justify-end gap-3 print-hide">
+        <div className="bg-white px-5 py-3 border-t border-slate-200 flex justify-end gap-3 print-hide print:hidden">
           <button
             type="button"
             onClick={onClose}
