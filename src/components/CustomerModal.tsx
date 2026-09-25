@@ -116,7 +116,7 @@ export function CustomerModal({ isOpen, onClose, onSave, customer }: CustomerMod
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Mobile Phone <span className="text-rose-500">*</span>
@@ -143,7 +143,7 @@ export function CustomerModal({ isOpen, onClose, onSave, customer }: CustomerMod
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">Customer Type</label>
               <select
@@ -180,7 +180,7 @@ export function CustomerModal({ isOpen, onClose, onSave, customer }: CustomerMod
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {!customer && (
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Opening Balance (₹)</label>

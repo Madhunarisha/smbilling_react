@@ -41,6 +41,8 @@ export function ProductModal({
     description: '',
     purchasePrice: 0,
     sellingPrice: 0,
+    wholesalePrice: 0,
+    retailPrice: 0,
     mrp: 0,
     gstRate: 18,
     discountPercent: 0,
@@ -73,6 +75,8 @@ export function ProductModal({
     if (product) {
       const currentGst = product.gstRate !== undefined ? product.gstRate : 18;
       setIsCustomGst(currentGst !== 18 && currentGst !== 5);
+      const wsPrice = product.wholesalePrice !== undefined ? product.wholesalePrice : (product.sellingPrice || 0);
+      const rtPrice = product.retailPrice !== undefined ? product.retailPrice : (product.mrp || product.sellingPrice || 0);
       setFormData({
         sku: product.sku || '',
         name: product.name || '',
@@ -82,8 +86,10 @@ export function ProductModal({
         barcode: product.barcode || '',
         description: product.description || '',
         purchasePrice: product.purchasePrice || 0,
-        sellingPrice: product.sellingPrice || 0,
-        mrp: product.mrp || 0,
+        sellingPrice: wsPrice,
+        wholesalePrice: wsPrice,
+        retailPrice: rtPrice,
+        mrp: product.mrp || rtPrice || 0,
         gstRate: product.gstRate !== undefined ? product.gstRate : 18,
         discountPercent: product.discountPercent || 0,
         openingStock: product.openingStock || 0,
@@ -104,6 +110,8 @@ export function ProductModal({
         description: '',
         purchasePrice: 0,
         sellingPrice: 0,
+        wholesalePrice: 0,
+        retailPrice: 0,
         mrp: 0,
         gstRate: 18,
         discountPercent: 0,
@@ -330,14 +338,32 @@ export function ProductModal({
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Selling Price (₹)</label>
+                <label className="block text-[11px] font-semibold text-blue-700 mb-1">Wholesale Price (₹)</label>
                 <input
                   type="number"
                   min="0"
                   step="any"
-                  value={formData.sellingPrice}
-                  onChange={(e) => setFormData({ ...formData, sellingPrice: parseFloat(e.target.value) || 0 })}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 font-mono font-bold text-slate-900"
+                  value={formData.wholesalePrice}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value) || 0;
+                    setFormData({ ...formData, wholesalePrice: val, sellingPrice: val });
+                  }}
+                  className="w-full px-3 py-2 text-sm border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-mono font-bold text-blue-900 bg-blue-50/50"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-emerald-700 mb-1">Retail Price (₹)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={formData.retailPrice}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value) || 0;
+                    setFormData({ ...formData, retailPrice: val });
+                  }}
+                  className="w-full px-3 py-2 text-sm border border-emerald-300 rounded-lg focus:ring-2 focus:ring-emerald-500 font-mono font-bold text-emerald-900 bg-emerald-50/50"
                 />
               </div>
 

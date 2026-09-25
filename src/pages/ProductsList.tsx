@@ -43,6 +43,7 @@ export function ProductsList({ onOpenStockAdjustment }: ProductsListProps) {
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [isSeeding, setIsSeeding] = useState(false);
 
   const loadData = async () => {
     try {
@@ -66,6 +67,19 @@ export function ProductsList({ onOpenStockAdjustment }: ProductsListProps) {
     }
   };
 
+  const handleSeedProducts = async () => {
+    try {
+      setIsSeeding(true);
+      const res = await api.seedProducts();
+      showToast(`Seeded ${res.addedCount} new SF Battery products!`, 'success');
+      await loadData();
+    } catch (err: any) {
+      showToast(err.message || 'Failed to seed products', 'error');
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
   useEffect(() => {
     loadData();
   }, [selectedCategory, stockStatus]);
@@ -73,6 +87,16 @@ export function ProductsList({ onOpenStockAdjustment }: ProductsListProps) {
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     loadData();
+  };
+
+  const handleInlinePriceSave = async (id: string, updates: Partial<Product>) => {
+    try {
+      const updated = await api.updateProduct(id, updates);
+      setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, ...updated } : p)));
+      showToast('Product prices updated!', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to update price', 'error');
+    }
   };
 
   const handleSaveProduct = async (productData: Partial<Product>) => {
@@ -128,6 +152,19 @@ export function ProductsList({ onOpenStockAdjustment }: ProductsListProps) {
           >
             <RefreshCw className="w-4 h-4" />
           </button>
+
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={handleSeedProducts}
+              disabled={isSeeding}
+              className="flex items-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-xl transition-all cursor-pointer disabled:opacity-50"
+              title="Seed products from SF Batteries official price list"
+            >
+              <Package className="w-4 h-4" />
+              <span>{isSeeding ? 'Seeding...' : 'Seed SF Products'}</span>
+            </button>
+          )}
 
           <button
             type="button"
@@ -207,7 +244,7 @@ export function ProductsList({ onOpenStockAdjustment }: ProductsListProps) {
           </form>
 
           {/* Stock Status Buttons */}
-          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
+          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl overflow-x-auto max-w-full">
             {[
               { id: 'all', label: 'All Stock' },
               { id: 'in', label: 'In Stock' },
@@ -274,8 +311,9 @@ export function ProductsList({ onOpenStockAdjustment }: ProductsListProps) {
                 <th className="p-3">Category</th>
                 <th className="p-3">Brand</th>
                 <th className="p-3 text-right">Cost (₹)</th>
-                <th className="p-3 text-right">Selling (₹)</th>
-                <th className="p-3 text-right">Margin</th>
+                <th className="p-3 text-right text-blue-700">Wholesale Price (₹)</th>
+                <th className="p-3 text-right text-emerald-700">Retail Price (₹)</th>
+                <th className="p-3 text-right">MRP (₹)</th>
                 <th className="p-3 text-center">GST %</th>
                 <th className="p-3 text-center">Stock Level</th>
                 <th className="p-3 text-center">Warranty</th>
@@ -285,13 +323,13 @@ export function ProductsList({ onOpenStockAdjustment }: ProductsListProps) {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={11} className="py-12 text-center text-slate-400">
+                  <td colSpan={12} className="py-12 text-center text-slate-400">
                     Loading inventory catalog...
                   </td>
                 </tr>
               ) : products.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="py-12 text-center text-slate-400">
+                  <td colSpan={12} className="py-12 text-center text-slate-400">
                     No matching products found in catalog.
                   </td>
                 </tr>
@@ -299,9 +337,8 @@ export function ProductsList({ onOpenStockAdjustment }: ProductsListProps) {
                 products.map((p) => {
                   const isLow = p.currentStock <= p.minStockLevel && p.currentStock > 0;
                   const isOut = p.currentStock <= 0;
-                  const marginAmount = p.sellingPrice - p.purchasePrice;
-                  const marginPercent =
-                    p.purchasePrice > 0 ? ((marginAmount / p.purchasePrice) * 100).toFixed(0) : '0';
+                  const currentWholesale = p.wholesalePrice !== undefined ? p.wholesalePrice : p.sellingPrice;
+                  const currentRetail = p.retailPrice !== undefined ? p.retailPrice : (p.mrp || p.sellingPrice);
 
                   return (
                     <tr key={p.id} className="hover:bg-slate-50/80 transition-colors">
@@ -334,12 +371,62 @@ export function ProductsList({ onOpenStockAdjustment }: ProductsListProps) {
                         {p.purchasePrice.toLocaleString('en-IN')}
                       </td>
 
-                      <td className="p-3 text-right font-mono font-bold text-slate-900 text-sm">
-                        {p.sellingPrice.toLocaleString('en-IN')}
+                      {/* Editable Wholesale Price */}
+                      <td className="p-2 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <span className="text-[10px] font-bold text-blue-600">₹</span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="any"
+                            defaultValue={currentWholesale}
+                            key={`ws-${p.id}-${currentWholesale}`}
+                            onBlur={(e) => {
+                              const val = parseFloat(e.target.value);
+                              if (!isNaN(val) && val !== currentWholesale) {
+                                handleInlinePriceSave(p.id, { wholesalePrice: val, sellingPrice: val });
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                (e.target as HTMLInputElement).blur();
+                              }
+                            }}
+                            className="w-20 px-2 py-1 text-xs font-mono font-bold text-right text-blue-900 bg-blue-50/60 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:bg-white"
+                            title="Click to edit Wholesale Price"
+                          />
+                        </div>
                       </td>
 
-                      <td className="p-3 text-right font-mono text-emerald-700 font-semibold">
-                        +{marginPercent}%
+                      {/* Editable Retail Price */}
+                      <td className="p-2 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <span className="text-[10px] font-bold text-emerald-600">₹</span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="any"
+                            defaultValue={currentRetail}
+                            key={`rt-${p.id}-${currentRetail}`}
+                            onBlur={(e) => {
+                              const val = parseFloat(e.target.value);
+                              if (!isNaN(val) && val !== currentRetail) {
+                                handleInlinePriceSave(p.id, { retailPrice: val });
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                (e.target as HTMLInputElement).blur();
+                              }
+                            }}
+                            className="w-20 px-2 py-1 text-xs font-mono font-bold text-right text-emerald-900 bg-emerald-50/60 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:bg-white"
+                            title="Click to edit Retail Price"
+                          />
+                        </div>
+                      </td>
+
+                      <td className="p-3 text-right font-mono text-slate-600">
+                        {(p.mrp || currentRetail).toLocaleString('en-IN')}
                       </td>
 
                       <td className="p-3 text-center font-mono font-medium text-slate-700">

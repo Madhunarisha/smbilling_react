@@ -12,7 +12,6 @@ import {
   RotateCcw,
   Wallet,
   CreditCard,
-  FileCheck2,
   Truck,
   BarChart3,
   Settings,
@@ -116,13 +115,6 @@ export function Sidebar({ activePage, onNavigate, isOpen, onClose }: SidebarProp
         { id: 'expenses', label: 'Expenses', icon: Wallet },
         { id: 'payments', label: 'Payments', icon: CreditCard },
         { id: 'ledgers', label: 'Ledger Management', icon: BookOpen },
-      ],
-    },
-    {
-      category: 'QUOTATIONS',
-      items: [
-        { id: 'quotations', label: 'Quotations', icon: FileCheck2 },
-        { id: 'delivery_challans', label: 'Delivery Challans', icon: Truck },
       ],
     },
     {

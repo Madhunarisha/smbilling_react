@@ -33,7 +33,9 @@ export interface Product {
   barcode: string;
   description: string;
   purchasePrice: number;
-  sellingPrice: number;
+  sellingPrice: number; // Defaults to Wholesale Price
+  wholesalePrice?: number;
+  retailPrice?: number;
   mrp: number;
   gstRate: number; // e.g. 0, 5, 12, 18, 28
   discountPercent: number;

@@ -25,7 +25,6 @@ import { SettingsPage } from './pages/SettingsPage.js';
 import { ServiceReminders } from './pages/ServiceReminders.js';
 import { PurchaseOrders } from './pages/PurchaseOrders.js';
 import { ExpensesPayments } from './pages/ExpensesPayments.js';
-import { QuotationsChallans } from './pages/QuotationsChallans.js';
 import { UserManagement } from './pages/UserManagement.js';
 
 import { Invoice, Product, BusinessSettings } from './types/index.js';
@@ -216,12 +215,6 @@ function MainApp() {
 
           {/* Finance & Accounts -> Payments */}
           {currentView === 'payments' && <ExpensesPayments initialTab="payments" />}
-
-          {/* Quotations -> Quotations */}
-          {currentView === 'quotations' && <QuotationsChallans initialTab="quotes" />}
-
-          {/* Quotations -> Delivery Challans */}
-          {currentView === 'delivery_challans' && <QuotationsChallans initialTab="challans" />}
 
           {/* Reports -> Payment Summary */}
           {currentView === 'reports' && <ReportsPage />}

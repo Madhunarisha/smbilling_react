@@ -153,11 +153,26 @@ export async function initDb(): Promise<void> {
       supplierId TEXT,
       supplierName TEXT,
       warrantyPeriod TEXT,
+      wholesalePrice REAL,
+      retailPrice REAL,
       status TEXT NOT NULL,
       createdAt TEXT NOT NULL,
       updatedAt TEXT NOT NULL
     )
   `;
+
+  try {
+    await db.sql`ALTER TABLE products ADD COLUMN wholesalePrice REAL`;
+  } catch (_) {}
+  try {
+    await db.sql`ALTER TABLE products ADD COLUMN retailPrice REAL`;
+  } catch (_) {}
+
+  // Populate missing wholesalePrice / retailPrice from sellingPrice / mrp
+  try {
+    await db.sql`UPDATE products SET wholesalePrice = sellingPrice WHERE wholesalePrice IS NULL OR wholesalePrice = 0`;
+    await db.sql`UPDATE products SET retailPrice = CASE WHEN mrp IS NOT NULL AND mrp > 0 THEN mrp ELSE sellingPrice END WHERE retailPrice IS NULL OR retailPrice = 0`;
+  } catch (_) {}
 
   await db.sql`
     CREATE TABLE IF NOT EXISTS invoices (
@@ -191,6 +206,13 @@ export async function initDb(): Promise<void> {
       createdAt TEXT NOT NULL
     )
   `;
+
+  try {
+    await db.sql`ALTER TABLE invoices ADD COLUMN modeOfPayment TEXT`;
+  } catch (_) {}
+  try {
+    await db.sql`ALTER TABLE invoices ADD COLUMN dispatchedThrough TEXT`;
+  } catch (_) {}
 
   await db.sql`
     CREATE TABLE IF NOT EXISTS invoice_items (
@@ -285,6 +307,16 @@ export async function initDb(): Promise<void> {
       createdBy TEXT NOT NULL
     )
   `;
+
+  try {
+    await db.sql`ALTER TABLE payments ADD COLUMN type TEXT DEFAULT 'Inward (Customer Receipt)'`;
+  } catch (_) {}
+  try {
+    await db.sql`ALTER TABLE payments ADD COLUMN status TEXT DEFAULT 'Completed'`;
+  } catch (_) {}
+  try {
+    await db.sql`ALTER TABLE payments ADD COLUMN partyName TEXT`;
+  } catch (_) {}
 
   await db.sql`
     CREATE TABLE IF NOT EXISTS stock_transactions (

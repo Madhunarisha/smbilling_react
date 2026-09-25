@@ -150,6 +150,10 @@ export const api = {
     request<{ message: string; id: string }>(`/products/${id}`, {
       method: 'DELETE',
     }),
+  seedProducts: () =>
+    request<{ message: string; addedCount: number; updatedCount: number }>('/products/seed', {
+      method: 'POST',
+    }),
 
   // Categories
   getCategories: () => request<Category[]>('/categories'),
@@ -229,6 +233,18 @@ export const api = {
     }),
   deleteInvoice: (id: string) =>
     request<{ message: string }>(`/invoices/${id}`, {
+      method: 'DELETE',
+    }),
+
+  // Payments / Transactions
+  getPayments: () => request<any[]>('/payments'),
+  createPaymentRecord: (data: any) =>
+    request<any>('/payments', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  deletePaymentRecord: (id: string) =>
+    request<{ message: string }>(`/payments/${id}`, {
       method: 'DELETE',
     }),
 

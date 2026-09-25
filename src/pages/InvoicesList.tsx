@@ -181,7 +181,7 @@ export function InvoicesList({
           </form>
 
           {/* Status Filter Buttons */}
-          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
+          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl overflow-x-auto max-w-full">
             {['all', 'Paid', 'Partially Paid', 'Unpaid'].map((st) => (
               <button
                 key={st}

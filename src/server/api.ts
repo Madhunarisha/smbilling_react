@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { db, readDb, writeDb, logAudit, getMongoDb } from './db.js';
+import { runProductSeeder } from './seed_products.js';
 
 import {
   authenticateToken,
@@ -379,6 +380,17 @@ apiRouter.get('/products', authenticateToken, async (req: Request, res: Response
   }
 });
 
+apiRouter.post('/products/seed', authenticateToken, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const result = await runProductSeeder();
+    await logAudit(req.user?.id || 'admin', req.user?.name || 'Admin', 'SEED_PRODUCTS', 'Products', `Seeded ${result.addedCount} new SF Battery products, updated ${result.updatedCount}`);
+    res.json({ message: 'Products seeded successfully', ...result });
+  } catch (err: any) {
+    console.error('Failed to seed products:', err);
+    res.status(500).json({ error: err.message || 'Failed to seed products' });
+  }
+});
+
 apiRouter.get('/products/:id', authenticateToken, async (req: Request, res: Response) => {
   try {
     const rows = await db.sql`SELECT * FROM products WHERE id = ${req.params.id}`;
@@ -392,7 +404,7 @@ apiRouter.get('/products/:id', authenticateToken, async (req: Request, res: Resp
 
 apiRouter.post('/products', authenticateToken, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { sku, name, category, brand, modelNumber, barcode, description, purchasePrice, sellingPrice, mrp, gstRate, discountPercent, openingStock, minStockLevel, unit, supplierId, supplierName, warrantyPeriod } = req.body;
+    const { sku, name, category, brand, modelNumber, barcode, description, purchasePrice, sellingPrice, wholesalePrice, retailPrice, mrp, gstRate, discountPercent, openingStock, minStockLevel, unit, supplierId, supplierName, warrantyPeriod } = req.body;
 
     if (!sku || !name || !category || !brand) {
       return res.status(400).json({ error: 'SKU, Product Name, Category and Brand are required.' });
@@ -404,6 +416,10 @@ apiRouter.post('/products', authenticateToken, requireAdmin, async (req: Authent
       return res.status(400).json({ error: `A product with SKU "${sku}" already exists.` });
     }
 
+    const baseSellingPrice = Number(sellingPrice) || Number(wholesalePrice) || 0;
+    const baseWholesalePrice = wholesalePrice !== undefined ? Number(wholesalePrice) : baseSellingPrice;
+    const baseRetailPrice = retailPrice !== undefined ? Number(retailPrice) : (Number(mrp) || baseSellingPrice);
+
     const newProduct = {
       id: `prod-${Date.now()}`,
       sku: skuUpper,
@@ -414,8 +430,10 @@ apiRouter.post('/products', authenticateToken, requireAdmin, async (req: Authent
       barcode: barcode?.trim() || `890${Math.floor(100000000 + Math.random() * 900000000)}`,
       description: description?.trim() || '',
       purchasePrice: Number(purchasePrice) || 0,
-      sellingPrice: Number(sellingPrice) || 0,
-      mrp: Number(mrp) || Number(sellingPrice) || 0,
+      sellingPrice: baseWholesalePrice,
+      wholesalePrice: baseWholesalePrice,
+      retailPrice: baseRetailPrice,
+      mrp: Number(mrp) || baseRetailPrice,
       gstRate: Number(gstRate) || 18,
       discountPercent: Number(discountPercent) || 0,
       openingStock: Number(openingStock) || 0,
@@ -431,8 +449,8 @@ apiRouter.post('/products', authenticateToken, requireAdmin, async (req: Authent
     };
 
     await db.sql`
-      INSERT INTO products (id, sku, name, category, brand, modelNumber, barcode, description, purchasePrice, sellingPrice, mrp, gstRate, discountPercent, openingStock, currentStock, minStockLevel, unit, supplierId, supplierName, warrantyPeriod, status, createdAt, updatedAt)
-      VALUES (${newProduct.id}, ${newProduct.sku}, ${newProduct.name}, ${newProduct.category}, ${newProduct.brand}, ${newProduct.modelNumber}, ${newProduct.barcode}, ${newProduct.description}, ${newProduct.purchasePrice}, ${newProduct.sellingPrice}, ${newProduct.mrp}, ${newProduct.gstRate}, ${newProduct.discountPercent}, ${newProduct.openingStock}, ${newProduct.currentStock}, ${newProduct.minStockLevel}, ${newProduct.unit}, ${newProduct.supplierId}, ${newProduct.supplierName}, ${newProduct.warrantyPeriod}, ${newProduct.status}, ${newProduct.createdAt}, ${newProduct.updatedAt})
+      INSERT INTO products (id, sku, name, category, brand, modelNumber, barcode, description, purchasePrice, sellingPrice, wholesalePrice, retailPrice, mrp, gstRate, discountPercent, openingStock, currentStock, minStockLevel, unit, supplierId, supplierName, warrantyPeriod, status, createdAt, updatedAt)
+      VALUES (${newProduct.id}, ${newProduct.sku}, ${newProduct.name}, ${newProduct.category}, ${newProduct.brand}, ${newProduct.modelNumber}, ${newProduct.barcode}, ${newProduct.description}, ${newProduct.purchasePrice}, ${newProduct.sellingPrice}, ${newProduct.wholesalePrice}, ${newProduct.retailPrice}, ${newProduct.mrp}, ${newProduct.gstRate}, ${newProduct.discountPercent}, ${newProduct.openingStock}, ${newProduct.currentStock}, ${newProduct.minStockLevel}, ${newProduct.unit}, ${newProduct.supplierId}, ${newProduct.supplierName}, ${newProduct.warrantyPeriod}, ${newProduct.status}, ${newProduct.createdAt}, ${newProduct.updatedAt})
     `;
 
     // Log opening stock transaction
@@ -464,6 +482,14 @@ apiRouter.put('/products/:id', authenticateToken, requireAdmin, async (req: Auth
       }
     }
 
+    const wholesalePrice = req.body.wholesalePrice !== undefined
+      ? Number(req.body.wholesalePrice)
+      : (req.body.sellingPrice !== undefined ? Number(req.body.sellingPrice) : (existing.wholesalePrice ?? existing.sellingPrice));
+
+    const retailPrice = req.body.retailPrice !== undefined
+      ? Number(req.body.retailPrice)
+      : (req.body.mrp !== undefined ? Number(req.body.mrp) : (existing.retailPrice ?? existing.mrp ?? existing.sellingPrice));
+
     const updated = {
       ...existing,
       ...req.body,
@@ -472,15 +498,38 @@ apiRouter.put('/products/:id', authenticateToken, requireAdmin, async (req: Auth
       category: req.body.category ? req.body.category.trim() : existing.category,
       brand: req.body.brand ? req.body.brand.trim() : existing.brand,
       purchasePrice: req.body.purchasePrice !== undefined ? Number(req.body.purchasePrice) : existing.purchasePrice,
-      sellingPrice: req.body.sellingPrice !== undefined ? Number(req.body.sellingPrice) : existing.sellingPrice,
-      mrp: req.body.mrp !== undefined ? Number(req.body.mrp) : existing.mrp,
+      sellingPrice: wholesalePrice,
+      wholesalePrice,
+      retailPrice,
+      mrp: req.body.mrp !== undefined ? Number(req.body.mrp) : (existing.mrp ?? retailPrice),
       gstRate: req.body.gstRate !== undefined ? Number(req.body.gstRate) : existing.gstRate,
       minStockLevel: req.body.minStockLevel !== undefined ? Number(req.body.minStockLevel) : existing.minStockLevel,
       updatedAt: new Date().toISOString(),
     };
 
     await db.sql`
-      UPDATE products SET sku = ${updated.sku}, name = ${updated.name}, category = ${updated.category}, brand = ${updated.brand}, modelNumber = ${updated.modelNumber}, barcode = ${updated.barcode}, description = ${updated.description}, purchasePrice = ${updated.purchasePrice}, sellingPrice = ${updated.sellingPrice}, mrp = ${updated.mrp}, gstRate = ${updated.gstRate}, discountPercent = ${updated.discountPercent}, minStockLevel = ${updated.minStockLevel}, unit = ${updated.unit}, supplierId = ${updated.supplierId}, supplierName = ${updated.supplierName}, warrantyPeriod = ${updated.warrantyPeriod}, status = ${updated.status}, updatedAt = ${updated.updatedAt}
+      UPDATE products SET
+        sku = ${updated.sku},
+        name = ${updated.name},
+        category = ${updated.category},
+        brand = ${updated.brand},
+        modelNumber = ${updated.modelNumber},
+        barcode = ${updated.barcode},
+        description = ${updated.description},
+        purchasePrice = ${updated.purchasePrice},
+        sellingPrice = ${updated.sellingPrice},
+        wholesalePrice = ${updated.wholesalePrice},
+        retailPrice = ${updated.retailPrice},
+        mrp = ${updated.mrp},
+        gstRate = ${updated.gstRate},
+        discountPercent = ${updated.discountPercent},
+        minStockLevel = ${updated.minStockLevel},
+        unit = ${updated.unit},
+        supplierId = ${updated.supplierId},
+        supplierName = ${updated.supplierName},
+        warrantyPeriod = ${updated.warrantyPeriod},
+        status = ${updated.status},
+        updatedAt = ${updated.updatedAt}
       WHERE id = ${req.params.id}
     `;
 
@@ -852,8 +901,10 @@ apiRouter.post('/invoices', authenticateToken, async (req: AuthenticatedRequest,
       customerName, customerPhone, customerId, customerGstin,
       billingAddress, shippingAddress, isInterState, items,
       overallDiscountType, overallDiscountValue, overallDiscountAmount,
-      paidAmount, paymentMode, notes,
+      paidAmount, paymentMode, modeOfPayment, notes, dispatchedThrough,
     } = req.body;
+
+    const resolvedMode = modeOfPayment || paymentMode || 'Cash';
 
     if (!customerName || !items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'Customer name and at least one invoice item are required.' });
@@ -983,8 +1034,8 @@ apiRouter.post('/invoices', authenticateToken, async (req: AuthenticatedRequest,
     const newInvoiceId = `inv-${Date.now()}`;
     const invDate = new Date().toISOString();
     await db.sql`
-      INSERT INTO invoices (id, invoiceNumber, date, customerId, customerName, customerPhone, customerGstin, billingAddress, shippingAddress, isInterState, gstType, subtotal, overallDiscountType, overallDiscountValue, overallDiscountAmount, taxableAmount, cgstTotal, sgstTotal, igstTotal, roundOff, grandTotal, paidAmount, balanceAmount, paymentMode, paymentStatus, notes, createdBy, createdAt)
-      VALUES (${newInvoiceId}, ${invoiceNumber}, ${invDate}, ${finalCustomerId}, ${customerName.trim()}, ${phoneToMatch}, ${customerGstin ? customerGstin.trim().toUpperCase() : null}, ${billingAddress ? billingAddress.trim() : null}, ${shippingAddress ? shippingAddress.trim() : null}, ${isInterState ? 1 : 0}, ${gstType}, ${Math.round(calculatedSubtotal * 100) / 100}, ${overallDiscountType || 'fixed'}, ${Number(overallDiscountValue) || 0}, ${finalOverallDiscount}, ${Math.round((calculatedTaxable - finalOverallDiscount) * 100) / 100}, ${Math.round(calculatedCgst * 100) / 100}, ${Math.round(calculatedSgst * 100) / 100}, ${Math.round(calculatedIgst * 100) / 100}, ${roundOff}, ${roundedGrandTotal}, ${finalPaid}, ${balance}, ${paymentMode || 'Cash'}, ${paymentStatus}, ${notes?.trim() || ''}, ${req.user?.name || 'Staff'}, ${invDate})
+      INSERT INTO invoices (id, invoiceNumber, date, customerId, customerName, customerPhone, customerGstin, billingAddress, shippingAddress, isInterState, gstType, subtotal, overallDiscountType, overallDiscountValue, overallDiscountAmount, taxableAmount, cgstTotal, sgstTotal, igstTotal, roundOff, grandTotal, paidAmount, balanceAmount, paymentMode, modeOfPayment, paymentStatus, notes, dispatchedThrough, createdBy, createdAt)
+      VALUES (${newInvoiceId}, ${invoiceNumber}, ${invDate}, ${finalCustomerId}, ${customerName.trim()}, ${phoneToMatch}, ${customerGstin ? customerGstin.trim().toUpperCase() : null}, ${billingAddress ? billingAddress.trim() : null}, ${shippingAddress ? shippingAddress.trim() : null}, ${isInterState ? 1 : 0}, ${gstType}, ${Math.round(calculatedSubtotal * 100) / 100}, ${overallDiscountType || 'fixed'}, ${Number(overallDiscountValue) || 0}, ${finalOverallDiscount}, ${Math.round((calculatedTaxable - finalOverallDiscount) * 100) / 100}, ${Math.round(calculatedCgst * 100) / 100}, ${Math.round(calculatedSgst * 100) / 100}, ${Math.round(calculatedIgst * 100) / 100}, ${roundOff}, ${roundedGrandTotal}, ${finalPaid}, ${balance}, ${resolvedMode}, ${resolvedMode}, ${paymentStatus}, ${notes?.trim() || ''}, ${dispatchedThrough ? dispatchedThrough.trim() : null}, ${req.user?.name || 'Staff'}, ${invDate})
     `;
 
     // 6. Insert items, update stock, create stock transactions
@@ -1095,6 +1146,102 @@ apiRouter.post('/invoices/:id/payment', authenticateToken, async (req: Authentic
 
     await logAudit(req.user?.id || 'staff', req.user?.name || 'Staff', 'PAYMENT_RECORDED', 'Billing', `Recorded payment of ₹${actualPayment} on ${invoice.invoiceNumber}`, invoice.id);
     res.json({ invoice, payment: { id: payId, amount: actualPayment, paymentMode } });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+apiRouter.get('/payments', authenticateToken, async (_req: Request, res: Response) => {
+  try {
+    const rows = (await db.sql`SELECT * FROM payments ORDER BY date DESC, id DESC`) as any[];
+    const normalized = (rows || []).map((p: any) => ({
+      id: p.id,
+      type: p.type || (p.customerId ? 'Inward (Customer Receipt)' : 'Outward (Supplier Payment)'),
+      partyName: p.partyName || p.customerName || 'Customer / Vendor',
+      amount: Number(p.amount) || 0,
+      mode: p.paymentMode || 'Cash',
+      referenceNo: p.transactionRef || p.invoiceNumber || p.id,
+      date: p.date ? p.date.split('T')[0] : new Date().toISOString().split('T')[0],
+      status: p.status || 'Completed',
+      notes: p.notes || '',
+    }));
+    res.json(normalized);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+apiRouter.post('/payments', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { type, partyName, amount, mode, referenceNo, date, status, notes, partyId } = req.body;
+    if (!partyName || !amount || Number(amount) <= 0) {
+      return res.status(400).json({ error: 'Party name and a valid payment amount are required.' });
+    }
+
+    const payId = `pm-${Date.now()}`;
+    const payDate = date ? (date.includes('T') ? date : date + 'T12:00:00.000Z') : new Date().toISOString();
+    const payMode = mode || 'Cash';
+    const payStatus = status || 'Completed';
+    const payType = type || 'Inward (Customer Receipt)';
+    const numAmount = Number(amount);
+    const ref = referenceNo ? String(referenceNo).trim() : `PAY-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    await db.sql`
+      INSERT INTO payments (id, invoiceId, invoiceNumber, customerId, customerName, amount, paymentMode, transactionRef, date, notes, createdBy, type, status, partyName)
+      VALUES (${payId}, null, ${ref}, ${partyId || null}, ${partyName.trim()}, ${numAmount}, ${payMode}, ${ref}, ${payDate}, ${notes || ''}, ${req.user?.name || 'Staff'}, ${payType}, ${payStatus}, ${partyName.trim()})
+    `;
+
+    // If customer receipt with partyId, update customer balance and ledger
+    if (partyId && payType.startsWith('Inward')) {
+      const custRows = await db.sql`SELECT * FROM customers WHERE id = ${partyId}`;
+      const customer = custRows && (custRows as any[]).length > 0 ? (custRows as any[])[0] : null;
+      if (customer) {
+        const newOutstanding = Math.max(0, customer.currentOutstanding - numAmount);
+        await db.sql`UPDATE customers SET currentOutstanding = ${newOutstanding} WHERE id = ${partyId}`;
+        await db.sql`
+          INSERT INTO customer_ledgers (id, customerId, customerName, date, description, type, referenceNo, debit, credit, balance, notes)
+          VALUES (${'cld-' + Date.now()}, ${partyId}, ${customer.name}, ${payDate}, ${'Direct Payment Receipt: ' + ref}, 'payment', ${payId}, 0, ${numAmount}, ${newOutstanding}, ${'Mode: ' + payMode})
+        `;
+      }
+    }
+
+    // If supplier payment with partyId, update supplier balance and ledger
+    if (partyId && payType.startsWith('Outward')) {
+      const supRows = await db.sql`SELECT * FROM suppliers WHERE id = ${partyId}`;
+      const supplier = supRows && (supRows as any[]).length > 0 ? (supRows as any[])[0] : null;
+      if (supplier) {
+        const newPayable = Math.max(0, supplier.currentPayable - numAmount);
+        await db.sql`UPDATE suppliers SET currentPayable = ${newPayable} WHERE id = ${partyId}`;
+        await db.sql`
+          INSERT INTO supplier_ledgers (id, supplierId, supplierName, date, description, type, referenceNo, debit, credit, balance, notes)
+          VALUES (${'sld-' + Date.now()}, ${partyId}, ${supplier.name}, ${payDate}, ${'Supplier Payment: ' + ref}, 'payment', ${payId}, ${numAmount}, 0, ${newPayable}, ${'Mode: ' + payMode})
+        `;
+      }
+    }
+
+    await logAudit(req.user?.id || 'staff', req.user?.name || 'Staff', 'PAYMENT_RECORDED', 'Finance', `Recorded ${payType} of ₹${numAmount} for ${partyName}`, payId);
+
+    res.json({
+      id: payId,
+      type: payType,
+      partyName: partyName.trim(),
+      amount: numAmount,
+      mode: payMode,
+      referenceNo: ref,
+      date: payDate.split('T')[0],
+      status: payStatus,
+      notes: notes || '',
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+apiRouter.delete('/payments/:id', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const id = req.params.id;
+    await db.sql`DELETE FROM payments WHERE id = ${id}`;
+    res.json({ message: 'Payment record deleted successfully.' });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

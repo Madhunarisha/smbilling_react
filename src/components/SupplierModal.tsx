@@ -113,7 +113,7 @@ export function SupplierModal({ isOpen, onClose, onSave, supplier }: SupplierMod
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">Contact Person</label>
               <input
@@ -140,7 +140,7 @@ export function SupplierModal({ isOpen, onClose, onSave, supplier }: SupplierMod
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">GSTIN</label>
               <input

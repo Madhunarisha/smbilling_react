@@ -404,8 +404,8 @@ export function InvoicePrintModal({
                       <div className="text-[9.5px] text-slate-700">
                         Mode/Terms of Payment
                       </div>
-                      <div className="font-semibold text-black">
-                        {invoice.modeOfPayment || invoice.paymentMode || ''}
+                      <div className="font-bold text-black uppercase text-[11px]">
+                        {invoice.modeOfPayment || invoice.paymentMode || 'Cash'}
                       </div>
                     </div>
                   </div>
@@ -479,7 +479,7 @@ export function InvoicePrintModal({
                         Dispatched through
                       </div>
                       <div className="font-bold text-black">
-                        {invoice.dispatchedThrough || 'Saran'}
+                        {invoice.dispatchedThrough || ''}
                       </div>
                     </div>
                     <div className="w-1/2 p-1.5 min-h-[32px]">
@@ -740,14 +740,22 @@ export function InvoicePrintModal({
                 </table>
               </div>
 
-              {/* AMOUNT CHARGEABLE IN WORDS */}
-              <div className="tally-border-b border-b border-black p-1.5">
-                <div className="flex justify-between items-center text-[10px] text-slate-800">
-                  <span>Amount Chargeable (in words)</span>
-                  <span className="italic">E. &amp; O.E</span>
+              {/* AMOUNT CHARGEABLE IN WORDS & PAYMENT MODE */}
+              <div className="tally-border-b border-b border-black p-1.5 flex justify-between items-center">
+                <div className="flex-1">
+                  <div className="flex justify-between items-center text-[10px] text-slate-800">
+                    <span>Amount Chargeable (in words)</span>
+                    <span className="italic pr-4">E. &amp; O.E</span>
+                  </div>
+                  <div className="font-bold text-[11.5px] mt-0.5 text-black">
+                    {numberToWordsINR(invoice.grandTotal)}
+                  </div>
                 </div>
-                <div className="font-bold text-[11.5px] mt-0.5 text-black">
-                  {numberToWordsINR(invoice.grandTotal)}
+                <div className="text-right tally-border-l border-l border-black pl-3 py-0.5 shrink-0">
+                  <span className="text-[9px] text-slate-600 block uppercase font-medium">Mode of Payment</span>
+                  <span className="font-black text-[12px] uppercase text-black font-mono tracking-tight">
+                    {invoice.modeOfPayment || invoice.paymentMode || 'CASH'}
+                  </span>
                 </div>
               </div>
 

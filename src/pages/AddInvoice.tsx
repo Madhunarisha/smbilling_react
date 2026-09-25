@@ -22,6 +22,7 @@ import {
   Lock,
   Unlock,
   Hash,
+  Truck,
 } from 'lucide-react';
 import { Product, Customer, Invoice, PaymentMode } from '../types/index.js';
 import { api } from '../services/api.js';
@@ -116,6 +117,7 @@ export function AddInvoice({ onInvoiceCreated, onNavigateToList }: AddInvoicePro
   const [mobileNumber, setMobileNumber] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [address, setAddress] = useState('');
+  const [dispatchedThrough, setDispatchedThrough] = useState('');
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
 
   // Dynamic GST Field (Non-mandatory / Optional)
@@ -135,6 +137,22 @@ export function AddInvoice({ onInvoiceCreated, onNavigateToList }: AddInvoicePro
   // Barcode & Product Selection
   const [barcodeInput, setBarcodeInput] = useState('');
   const [selectedProductId, setSelectedProductId] = useState('');
+  const [priceMode, setPriceMode] = useState<'wholesale' | 'retail'>('wholesale');
+  const [productSearchQuery, setProductSearchQuery] = useState('');
+  const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const productSearchRef = useRef<HTMLDivElement>(null);
+
+  // Close product search dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (productSearchRef.current && !productSearchRef.current.contains(event.target as Node)) {
+        setIsProductDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Warranty Dates
   const [warrantyStartDate, setWarrantyStartDate] = useState(todayStr);
@@ -566,9 +584,50 @@ export function AddInvoice({ onInvoiceCreated, onNavigateToList }: AddInvoicePro
     }
   };
 
+  // Handle Wholesale vs Retail Price Mode change
+  const handlePriceModeChange = (newMode: 'wholesale' | 'retail') => {
+    setPriceMode(newMode);
+    setItems((prev) =>
+      prev.map((item) => {
+        const prod = products.find((p) => p.id === item.productId);
+        if (!prod) return item;
+        const newRate =
+          newMode === 'retail'
+            ? prod.retailPrice !== undefined && prod.retailPrice > 0
+              ? prod.retailPrice
+              : prod.mrp || prod.sellingPrice
+            : prod.wholesalePrice !== undefined && prod.wholesalePrice > 0
+            ? prod.wholesalePrice
+            : prod.sellingPrice;
+
+        const qty = item.quantity;
+        const gross = qty * newRate;
+        const discountAmount = (gross * item.discount) / 100;
+        let taxable = gross - discountAmount;
+        let taxAmount = 0;
+
+        if (applyGst) {
+          if (gstType === 'inclusive') {
+            const finalInclusive = gross - discountAmount;
+            taxable = finalInclusive / (1 + item.tax / 100);
+            taxAmount = finalInclusive - taxable;
+          } else {
+            taxable = gross - discountAmount;
+            taxAmount = (taxable * item.tax) / 100;
+          }
+        }
+        return {
+          ...item,
+          rate: newRate,
+          amount: Math.round((taxable + taxAmount) * 100) / 100,
+        };
+      })
+    );
+    showToast(`Switched pricing mode to ${newMode === 'wholesale' ? 'Wholesale Price' : 'Retail Price'}`, 'info');
+  };
+
   // Add Product to Table
   const addProductToTable = (product: Product) => {
-
     // Determine GST tax rate dynamically (Batteries & spares: 18%, Specialized parts: 5%, or Custom)
     let initialTax = 0;
     if (applyGst) {
@@ -579,7 +638,6 @@ export function AddInvoice({ onInvoiceCreated, onNavigateToList }: AddInvoicePro
       } else if (globalGstRate === '18') {
         initialTax = 18;
       } else {
-        // item-wise: specialized parts are 5%, all batteries and spares are 18%
         if (
           product.gstRate === 5 ||
           product.category?.toLowerCase().includes('specialized')
@@ -592,6 +650,15 @@ export function AddInvoice({ onInvoiceCreated, onNavigateToList }: AddInvoicePro
         }
       }
     }
+
+    const defaultRate =
+      priceMode === 'retail'
+        ? product.retailPrice !== undefined && product.retailPrice > 0
+          ? product.retailPrice
+          : product.mrp || product.sellingPrice
+        : product.wholesalePrice !== undefined && product.wholesalePrice > 0
+        ? product.wholesalePrice
+        : product.sellingPrice;
 
     setItems((prev) => {
       const existingIdx = prev.findIndex((item) => item.productId === product.id);
@@ -619,7 +686,7 @@ export function AddInvoice({ onInvoiceCreated, onNavigateToList }: AddInvoicePro
         return updated;
       }
 
-      const gross = 1 * product.sellingPrice;
+      const gross = 1 * defaultRate;
       const discountAmount = (gross * (product.discountPercent || 0)) / 100;
       let taxable = gross - discountAmount;
       let taxAmount = 0;
@@ -644,7 +711,7 @@ export function AddInvoice({ onInvoiceCreated, onNavigateToList }: AddInvoicePro
         barcode: product.barcode,
         unit: product.unit || 'Nos',
         quantity: 1,
-        rate: product.sellingPrice,
+        rate: defaultRate,
         discount: product.discountPercent || 0,
         tax: initialTax,
         amount,
@@ -661,6 +728,47 @@ export function AddInvoice({ onInvoiceCreated, onNavigateToList }: AddInvoicePro
     const found = products.find((p) => p.id === selectedProductId);
     if (found) {
       addProductToTable(found);
+    }
+  };
+
+  // Filtered products list for searchable select
+  const filteredProductsForSelect = products.filter((p) => {
+    if (!productSearchQuery.trim()) return true;
+    const q = productSearchQuery.toLowerCase().trim();
+    return (
+      p.name.toLowerCase().includes(q) ||
+      p.sku.toLowerCase().includes(q) ||
+      (p.modelNumber && p.modelNumber.toLowerCase().includes(q)) ||
+      p.brand.toLowerCase().includes(q) ||
+      (p.barcode && p.barcode.toLowerCase().includes(q))
+    );
+  });
+
+  const handleSelectProduct = (product: Product) => {
+    addProductToTable(product);
+    setProductSearchQuery('');
+    setSelectedProductId('');
+    setIsProductDropdownOpen(false);
+  };
+
+  const handleProductSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setIsProductDropdownOpen(true);
+      setHighlightedIndex((prev) => Math.min(prev + 1, filteredProductsForSelect.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlightedIndex((prev) => Math.max(prev - 1, 0));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (isProductDropdownOpen && filteredProductsForSelect.length > 0) {
+        const selected = filteredProductsForSelect[highlightedIndex] || filteredProductsForSelect[0];
+        if (selected) {
+          handleSelectProduct(selected);
+        }
+      }
+    } else if (e.key === 'Escape') {
+      setIsProductDropdownOpen(false);
     }
   };
 
@@ -830,6 +938,8 @@ export function AddInvoice({ onInvoiceCreated, onNavigateToList }: AddInvoicePro
         })),
         paidAmount: Math.min(enteredAmount, totalAmount),
         paymentMode: modalPaymentMethod,
+        modeOfPayment: modalPaymentMethod,
+        dispatchedThrough: dispatchedThrough.trim() || undefined,
         notes: `${modalPaymentNotes ? modalPaymentNotes + '\n' : ''}${notes ? notes + '\n' : ''}${!applyGst ? '[Tax Status: Non-GST / Exempted Sale]\n' : ''
           }Warranty: ${warrantyStartDate} to ${warrantyEndDate}${signatureName ? ` | Signatory: ${signatureName}` : ''
           }`,
@@ -886,6 +996,8 @@ export function AddInvoice({ onInvoiceCreated, onNavigateToList }: AddInvoicePro
         })),
         paidAmount: 0,
         paymentMode: paymentMethod,
+        modeOfPayment: paymentMethod,
+        dispatchedThrough: dispatchedThrough.trim() || undefined,
         notes: `${notes ? notes + '\n' : ''}${!applyGst ? '[Tax Status: Non-GST / Exempted Sale]\n' : ''
           }Warranty: ${warrantyStartDate} to ${warrantyEndDate}${signatureName ? ` | Signatory: ${signatureName}` : ''
           }`,
@@ -914,6 +1026,7 @@ export function AddInvoice({ onInvoiceCreated, onNavigateToList }: AddInvoicePro
     setMobileNumber('');
     setCustomerGstin('');
     setAddress('');
+    setDispatchedThrough('');
     setNotes('');
     if (onNavigateToList) {
       onNavigateToList();
@@ -1059,10 +1172,10 @@ export function AddInvoice({ onInvoiceCreated, onNavigateToList }: AddInvoicePro
             </div>
           </div>
 
-          {/* Row 2: Address & Dynamic GSTIN Field (Not Mandatory / Optional) */}
+          {/* Row 2: Address, Dynamic GSTIN Field & Dispatched Through */}
           <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
             {/* Address */}
-            <div className="md:col-span-7">
+            <div className="md:col-span-5">
               <label className="block text-xs font-semibold text-slate-600 mb-1 flex items-center justify-between">
                 <span>Address</span>
                 <span className="text-[11px] text-slate-400 font-normal">Optional</span>
@@ -1077,7 +1190,7 @@ export function AddInvoice({ onInvoiceCreated, onNavigateToList }: AddInvoicePro
             </div>
 
             {/* Dynamic GST Field (Non-mandatory / Optional) */}
-            <div className="md:col-span-5 flex flex-col justify-between">
+            <div className="md:col-span-4 flex flex-col justify-between">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
                   <span className="flex items-center gap-1">
@@ -1146,6 +1259,33 @@ export function AddInvoice({ onInvoiceCreated, onNavigateToList }: AddInvoicePro
                   </span>
                 )}
               </div>
+            </div>
+
+            {/* Dispatched Through Field */}
+            <div className="md:col-span-3 flex flex-col justify-between">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Truck className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Dispatched Through</span>
+                  </span>
+                  <span className="text-[10px] uppercase font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                    Optional
+                  </span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={dispatchedThrough}
+                    onChange={(e) => setDispatchedThrough(e.target.value)}
+                    placeholder="e.g. Saran / Courier / Driver"
+                    className="w-full px-3 py-2 text-xs sm:text-sm bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#c81e3a] focus:border-[#c81e3a] text-slate-900 font-medium transition-all"
+                  />
+                </div>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Prints on invoice under dispatch details
+              </p>
             </div>
           </div>
 
@@ -1240,6 +1380,41 @@ export function AddInvoice({ onInvoiceCreated, onNavigateToList }: AddInvoicePro
             )}
           </div>
 
+          {/* Pricing Mode Control Bar (Wholesale vs Retail) */}
+          <div className="p-3 bg-blue-50/60 border border-blue-200 rounded-xl flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-800">Invoice Pricing Rate Mode:</span>
+              <span className="text-[11px] text-slate-500 font-medium">
+                ({priceMode === 'wholesale' ? 'Applying Wholesale Trade Price' : 'Applying Retail / Consumer Price'})
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-slate-200 shadow-2xs">
+              <button
+                type="button"
+                onClick={() => handlePriceModeChange('wholesale')}
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  priceMode === 'wholesale'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                Wholesale Price
+              </button>
+              <button
+                type="button"
+                onClick={() => handlePriceModeChange('retail')}
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  priceMode === 'retail'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                Retail Price
+              </button>
+            </div>
+          </div>
+
           {/* Row 3: Payment Method */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -1275,33 +1450,100 @@ export function AddInvoice({ onInvoiceCreated, onNavigateToList }: AddInvoicePro
             </div>
           </div>
 
-          {/* Row 5: Product Selection with + button */}
+          {/* Row 5: Searchable Product Selector */}
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">
-              Products <span className="text-red-500">*</span>
+            <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
+              <span>Search &amp; Select Product <span className="text-red-500">*</span></span>
+              <span className="text-[11px] text-slate-500 font-normal">
+                Search by Name, SKU, Model or Brand
+              </span>
             </label>
-            <div className="flex items-center gap-2">
-              <select
-                value={selectedProductId}
-                onChange={(e) => setSelectedProductId(e.target.value)}
-                className="flex-1 px-3 py-2 text-xs sm:text-sm bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#c81e3a] focus:border-[#c81e3a] text-slate-900 font-medium"
-              >
-                <option value="">Select Products</option>
-                {products.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} — {formatINR(p.sellingPrice)} (Stock: {p.currentStock} {p.unit})
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                onClick={handleProductSelectAndAdd}
-                disabled={!selectedProductId}
-                title="Add selected product to invoice table"
-                className="w-9 h-9 flex items-center justify-center bg-[#c81e3a] hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-40 cursor-pointer shrink-0"
-              >
-                <Plus className="w-5 h-5" />
-              </button>
+            <div ref={productSearchRef} className="relative">
+              <div className="relative flex items-center">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
+                <input
+                  type="text"
+                  value={productSearchQuery}
+                  onFocus={() => setIsProductDropdownOpen(true)}
+                  onChange={(e) => {
+                    setProductSearchQuery(e.target.value);
+                    setIsProductDropdownOpen(true);
+                    setHighlightedIndex(0);
+                  }}
+                  onKeyDown={handleProductSearchKeyDown}
+                  placeholder="Type product name, SKU, model number, brand or barcode to search..."
+                  className="w-full pl-9 pr-8 py-2 text-xs sm:text-sm bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#c81e3a] focus:border-[#c81e3a] text-slate-900 font-medium placeholder:text-slate-400"
+                />
+                {productSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProductSearchQuery('');
+                      setIsProductDropdownOpen(false);
+                    }}
+                    className="absolute right-2.5 text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* Search Results Dropdown */}
+              {isProductDropdownOpen && (
+                <div className="absolute z-50 left-0 right-0 mt-1 max-h-72 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-xl divide-y divide-slate-100">
+                  {filteredProductsForSelect.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-slate-500">
+                      No matching products found for "{productSearchQuery}"
+                    </div>
+                  ) : (
+                    filteredProductsForSelect.map((p, idx) => {
+                      const isHighlighted = idx === highlightedIndex;
+                      const displayPrice = priceMode === 'retail'
+                        ? (p.retailPrice !== undefined && p.retailPrice > 0 ? p.retailPrice : (p.mrp || p.sellingPrice))
+                        : (p.wholesalePrice !== undefined && p.wholesalePrice > 0 ? p.wholesalePrice : p.sellingPrice);
+
+                      return (
+                        <div
+                          key={p.id}
+                          onClick={() => handleSelectProduct(p)}
+                          onMouseEnter={() => setHighlightedIndex(idx)}
+                          className={`p-3 cursor-pointer transition-colors flex items-center justify-between gap-3 ${
+                            isHighlighted ? 'bg-red-50/80 border-l-4 border-[#c81e3a]' : 'hover:bg-slate-50'
+                          }`}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-800 border border-slate-200">
+                                {p.sku}
+                              </span>
+                              <span className="text-xs font-bold text-slate-900 truncate">{p.name}</span>
+                            </div>
+                            <div className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-2">
+                              <span>Brand: {p.brand}</span>
+                              {p.modelNumber && <span>• Model: {p.modelNumber}</span>}
+                              <span>• Category: {p.category}</span>
+                            </div>
+                          </div>
+
+                          <div className="text-right shrink-0">
+                            <div className="text-xs font-black font-mono text-slate-900">
+                              {formatINR(displayPrice)}
+                              <span className="text-[10px] font-semibold text-slate-500 ml-1">
+                                ({priceMode === 'wholesale' ? 'WS' : 'Retail'})
+                              </span>
+                            </div>
+                            <div className="text-[10px] font-semibold mt-0.5">
+                              <span className={p.currentStock <= 0 ? 'text-red-600 font-bold' : 'text-emerald-700'}>
+                                {p.currentStock <= 0 ? 'Out of stock' : `${p.currentStock} ${p.unit} in stock`}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
